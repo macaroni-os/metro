@@ -30,7 +30,7 @@ if [ "$[target/arch_desc]" == "x86-64bit" ]; then
 	for pkg in nvidia-kernel-modules; do
 		emerge $eopts $pkg || exit 4
 	done
-if [ "$[target/arch_desc]" == "x86-32bit" ]; then
+elif [ "$[target/arch_desc]" == "x86-32bit" ]; then
 	epro mix-in gfxcard-intel || exit 1
 fi
 epro flavor desktop || exit 2
