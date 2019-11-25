@@ -21,7 +21,7 @@ from pathlib import Path
 os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__))))
 sys.path.append("../modules")
 
-from metro_support import lockFile, countFile, CommandRunner, MetroSetup
+from metro_support import LockFile, CountFile, CommandRunner, MetroSetup
 
 # these variables are used for building:
 
@@ -264,7 +264,7 @@ class MetroRepositoryDatabase(Database):
 		self.orm_register(BuildDir, Snapshot, SubArch, Artifact)
 
 setup = MetroSetup()
-settings = setup.getSettings()
+settings = setup.get_settings()
 initial_path = settings["path/mirror"]
 
 def find_file_compressed_or_not(glob_pattern):
@@ -315,7 +315,7 @@ for release in all_builds:
 				if not os.path.exists(failpath):
 					failcount = 0
 				else:
-					fc = countFile(failpath)
+					fc = CountFile(failpath)
 					failcount = fc.count
 
 				# LET'S CREATE A SEMI-POPULATED SUBARCH. WE WILL FILL OUT DATE FIELDS LATER:
@@ -439,7 +439,7 @@ def find_build(q, min_age=stale_days, max_age=None):
 		# skip it if it is currently being built....
 		tsfilepath = x.path+"/.control/.multi_progress"
 		if os.path.exists(tsfilepath):
-			tsfile = lockFile(tsfilepath)
+			tsfile = LockFile(tsfilepath)
 			# ensure lockFile is not stale. The exists() method will clean it up automatically if it is:
 			if tsfile.exists():
 				sys.stderr.write("# Build at %s in progress, skipping...\n" % x.path)

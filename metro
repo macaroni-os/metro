@@ -1,6 +1,6 @@
 #!/usr/bin/python3 -OO
 
-import os, sys, getopt, types, subprocess, glob
+import os, sys, getopt, subprocess, glob
 __app__ = os.path.basename(sys.argv[0])
 
 # we need this hard-coded path because we need a module here before we can parse our config file
@@ -89,7 +89,7 @@ class Metro:
 			sys.exit(0)
 
 		# Step 5: Initialize Metro data
-		settings = self.setup.getSettings(self.metro_args)
+		settings = self.setup.get_settings(self.metro_args)
 
 		if self.has_opts(["-k", "--key"]):
 			print(settings[self.get_opts(["-k", "--key"])])
@@ -152,7 +152,7 @@ class Metro:
 
 		abort = error = False
 		
-		initial_settings = self.setup.getSettings(self.metro_args)
+		initial_settings = self.setup.get_settings(self.metro_args)
 
 		if len(temp_targets):
 
@@ -164,7 +164,7 @@ class Metro:
 			# multi-target builds.
 
 			multi_tsfn = initial_settings["path/mirror/target/control"] + "/.multi_progress"
-			self.multi_ts = lockFile(multi_tsfn)
+			self.multi_ts = LockFile(multi_tsfn)
 			if self.multi_ts.exists():
 				print("Multi-target already in progress -- %s exists. Exiting." % self.multi_ts.path)
 				sys.exit(1)
@@ -188,7 +188,7 @@ class Metro:
 			current_target = targetname
 			# We start by grabbing settings for this target:
 
-			settings = self.setup.getSettings(self.metro_args,{"target": targetname})
+			settings = self.setup.get_settings(self.metro_args, {"target": targetname})
 
 			# Now, we move to defining lockfiles, and logging setup:
 			if targetname == "snapshot":
@@ -230,7 +230,7 @@ class Metro:
 			# dump all settings
 			if self.debug_flexdata:
 				Metro.dump_settings(settings)
-			self.ts = lockFile(tsfn)
+			self.ts = LockFile(tsfn)
 			abort = False
 			error = False
 			try:
@@ -292,15 +292,15 @@ class Metro:
 					self.ts.unlink()
 				# break out of multi-target loop so we can exit:
 				break
-		if self.multi_ts != None:
+		if self.multi_ts is not None:
 			self.multi_ts.unlink()
-		if self.ts != None:
+		if self.ts is not None:
 			self.ts.unlink()
 
 		official = initial_settings["release/type"] == "official"
 		failcnt_fn = initial_settings["path/mirror/target/control"] + "/.failcount"
 		status_fn  = initial_settings["path/mirror/target/path"] + "/status"
-		failcnt = countFile(failcnt_fn)
+		failcnt = CountFile(failcnt_fn)
 			
 		# So we can grab this in the qa_hook:
 		initial_settings["target"] = current_target
@@ -348,7 +348,7 @@ class Metro:
 		return self.setup.targets.__dict__[cls](settings, cr)
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])), "modules"))
-from metro_support import lockFile, countFile, MetroError, CommandRunner, MetroSetup
+from metro_support import LockFile, CountFile, MetroError, CommandRunner, MetroSetup
 from JIRA_bug import JIRAHook
 m = Metro()
 m.run()

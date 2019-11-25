@@ -1,30 +1,39 @@
 #!/usr/bin/python3
 
-import os, sys, subprocess, time, pwd, grp
-from importlib import import_module
+import grp
 import json
+import os
+import pwd
+import subprocess
+import sys
+import time
+from importlib import import_module
+
 
 def ismount(path):
-	"enhanced to handle bind mounts"
+	"""enhanced to handle bind mounts"""
 	if os.path.ismount(path):
 		return 1
-	a=os.popen("mount")
-	mylines=a.readlines()
+	a = os.popen("mount")
+	mylines = a.readlines()
 	a.close()
 	for line in mylines:
-		mysplit=line.split()
+		mysplit = line.split()
 		if os.path.normpath(path) == os.path.normpath(mysplit[2]):
 			return 1
 	return 0
 
+
 class MetroError(Exception):
 	def __init__(self, *args):
 		self.args = args
+
 	def __str__(self):
 		if len(self.args) == 1:
 			return str(self.args[0])
 		else:
 			return "(no message)"
+
 
 class MetroSetup(object):
 
@@ -35,8 +44,12 @@ class MetroSetup(object):
 
 		self.flexdata = import_module("flexdata")
 		self.targets = import_module("targets")
+		self.configfile = None
 
-	def getSettings(self, args={}, extraargs=None):
+	def get_settings(self, args=None, extraargs=None):
+
+		if args is None:
+			args = {}
 
 		self.configfile = os.path.expanduser("~/.metro")
 		# config settings setup
@@ -68,9 +81,10 @@ class MetroSetup(object):
 
 		return settings
 
+
 class CommandRunner(object):
 
-	"CommandRunner is a class that allows commands to run, and messages to be displayed. By default, output will go to a log file. Messages will appear on stdout and in the logs."
+	"""CommandRunner is a class that allows commands to run, and messages to be displayed. By default, output will go to a log file. Messages will appear on stdout and in the logs."""
 
 	def __init__(self, settings=None, logging=True):
 		self.settings = settings
@@ -82,7 +96,7 @@ class CommandRunner(object):
 				self.logging = False
 				self.run(["install", "-o", self.settings["path/mirror/owner"], "-g", self.settings["path/mirror/group"], "-m", self.settings["path/mirror/dirmode"], "-d", os.path.dirname(self.fname)], {})
 				self.logging = True
-			self.cmdout = open(self.fname,"w+")
+			self.cmdout = open(self.fname, "w+")
 			# set logfile ownership:
 			os.chown(self.fname, pwd.getpwnam(self.settings["path/mirror/owner"]).pw_uid, grp.getgrnam(self.settings["path/mirror/group"]).gr_gid)
 			sys.stdout.write("Logging output to %s.\n" % self.fname)
@@ -94,7 +108,8 @@ class CommandRunner(object):
 		sys.stdout.write(msg + "\n")
 
 	def run(self, cmdargs, env, error_scan=False):
-		self.mesg("Running command: %s (env %s) " % ( cmdargs,env ))
+		self.mesg("Running command: %s (env %s) " % (cmdargs, env))
+		cmd = None
 		try:
 			if self.logging:
 				cmd = subprocess.Popen(cmdargs, env=env, stdout=self.cmdout, stderr=subprocess.STDOUT)
@@ -113,33 +128,34 @@ class CommandRunner(object):
 					self.mesg("Attempting to extract failed ebuild information...")
 					if self.cmdout:
 						self.cmdout.flush()
-					s, out = subprocess.getstatusoutput('cat %s | grep "^ \* ERROR: " | sort -u | sed -e \'s/^ \\* ERROR: \\(.*\\) failed (\\(.*\\) phase).*/\\1 \\2/g\'' % self.fname)
+					s, out = subprocess.getstatusoutput('cat %s | grep "^ \\* ERROR: " | sort -u | sed -e \'s/^ \\* ERROR: \\(.*\\) failed (\\(.*\\) phase).*/\\1 \\2/g\'' % self.fname)
 					if s == 0:
 						errors = []
 						for line in out.split('\n'):
-							print("Processing line",line)
+							print("Processing line", line)
 							parts = line.split()
 							if len(parts) != 2:
 								# not what we're looking for
 								continue
 							if len(parts[0].split("/")) != 2:
 								continue
-							errors.append({"ebuild" : parts[0], "phase" : parts[1]})
+							errors.append({"ebuild": parts[0], "phase": parts[1]})
 						if len(errors):
 							fname = self.settings["path/mirror/target/path"] + "/log/errors.json"
 							self.mesg("Detected failed ebuilds... writing to %s." % fname)
-							a = open(fname,"w")
+							a = open(fname, "w")
 							a.write(json.dumps(errors, indent=4))
 							a.close()
 				return exitcode
 			return 0
 
-class stampFile(object):
 
-	def __init__(self,path):
+class StampFile(object):
+
+	def __init__(self, path):
 		self.path = path
 
-	def getFileContents(self):
+	def gen_file_contents(self):
 		return "replaceme"
 
 	def exists(self):
@@ -148,22 +164,14 @@ class stampFile(object):
 	def get(self):
 		if not os.path.exists(self.path):
 			return False
-		try:
-			inf = open(self.path,"r")
-		except IOError:
-			return False
-		data = inf.read()
-		inf.close()
-		try:
-			return int(data) 
-		except ValueError:
-			return False
+		with open(self.path, "r") as inf:
+			return inf.read()
 
 	def unlink(self):
 		if os.path.exists(self.path):
 			os.unlink(self.path)
 
-	def wait(self,seconds):
+	def wait(self, seconds):
 		elapsed = 0
 		while os.path.exists(self.path) and elapsed < seconds:
 			sys.stderr.write(".")
@@ -174,17 +182,16 @@ class stampFile(object):
 			return False
 		return True
 
-class fakeLockFile(stampFile):
 
-	def __init__(self,path):
-		stampFile.__init__(self,path)
-		self.created = False
+class FakeLockFile(StampFile):
 
-	def unlink(self):
-		pass
+	def __init__(self, path):
+		super().__init__(path)
+		self.hostname = subprocess.getoutput("/bin/hostname")
+		self._created = False
 
 	def create(self):
-		self.created = True
+		self._created = True
 
 	def exists(self):
 		return False
@@ -192,69 +199,114 @@ class fakeLockFile(stampFile):
 	def unlink(self):
 		pass
 
-	def getFileContents(self):
+	def gen_file_contents(self):
 		return ""
 
-class lockFile(fakeLockFile):
 
-	"Class to create lock files; used for tracking in-progress metro builds."
+class LockFile(FakeLockFile):
 
-	def unlink(self):
-		"only unlink if *we* created the file. Otherwise leave alone."
-		if self.created and os.path.exists(self.path):
-			os.unlink(self.path)
+	"""Class to create lock files; used for tracking in-progress metro builds."""
+
+	def _from_file(self):
+		data = self.get()
+		if data is False:
+			return None
+		return data.split(":")
+
+	@property
+	def hostname_from_file(self):
+		file_dat = self._from_file()
+		if len(file_dat) != 2:
+			return None
+		return file_dat[0]
+
+	@property
+	def pid_from_file(self):
+		file_dat = self._from_file()
+		if len(file_dat) != 2:
+			return None
+		return int(file_dat[1])
+
+	@property
+	def created_by_this_host(self) -> bool:
+		return self.hostname_from_file == self.hostname
+
+	@property
+	def created_by_me(self) -> bool:
+		if self.hostname_from_file and self.pid_from_file == os.getpid():
+			return True
+		else:
+			return False
+
+	@property
+	def pid_exists(self) -> bool:
+		my_pid = self.pid_from_file
+		if my_pid is not None:
+			try:
+				os.kill(my_pid, 0)
+				return True
+			except OSError:
+				pass
+		return False
 
 	def create(self):
 		if self.exists():
 			return False
 		try:
-			out = open(self.path,"w")
+			out = open(self.path, "w")
 		except IOError:
 			return False
-		out.write(self.getFileContents())
+		out.write(self.gen_file_contents())
 		out.close()
-		self.created = True
+		self._created = True
 		return True
 
 	def exists(self):
-		exists = False
 		if os.path.exists(self.path):
-			exists = True
-			mypid = self.get()
-			if mypid == False:
-				try:
-					os.unlink(self.path)
-				except FileNotFoundError:
-					pass
-				return False
-			try:
-				os.kill(mypid, 0)
-			except OSError:
-				exists = False
-				# stale pid, remove:
+			if not self.created_by_me:
+				sys.stderr.write("# Currently locked by %s, pid %s\n" % (self.hostname_from_file, self.pid_from_file))
+				return True
+			if not self.pid_exists:
 				sys.stderr.write("# Removing stale lock file: %s\n" % self.path)
-				try:
-					os.unlink(self.path)
-				except FileNotFoundError:
-					pass
-		return exists
+				self.unlink()
+				return False
+			else:
+				return True
+		else:
+			return False
 
-	def unlink(self):
-		if self.created and os.path.exists(self.path):
-			os.unlink(self.path)
+	def unlink(self, force=False):
+		"""only unlink if *we* (hostname, pid) created the file. Otherwise leave alone."""
+		do_unlink = False
+		if os.path.exists(self.path):
+			if not self.created_by_this_host:
+				if force is False:
+					sys.stderr.write("Won't unlink pidfile -- it was created by host %s!" % self.hostname_from_file)
+				else:
+					do_unlink = True
+			elif self.created_by_me:
+				# not only from this host, but our pid created it. So we own it, and can remove it.
+				do_unlink = True
+		if do_unlink:
+			try:
+				os.unlink(self.path)
+			except FileNotFoundError:
+				pass
+			sys.stderr.write("Lockfile removed.")
 
-	def getFileContents(self):
-		return(str(os.getpid()))
+	def gen_file_contents(self):
+		mypid = os.getpid()
+		return "%s:%s" % (self.hostname, mypid)
 
 
-class countFile(stampFile):
+class CountFile(StampFile):
 
-	"Class to record fail count for builds."
+	"""Class to record fail count for builds."""
 
 	@property
 	def count(self):
 		try:
-			f = open(self.path,"r")
+			f = open(self.path, "r")
 			d = f.readlines()
 			return int(d[0])
 		except (IOError, ValueError):
@@ -263,15 +315,17 @@ class countFile(stampFile):
 	def increment(self):
 		try:
 			count = self.count
-			if count == None:
+			if count is None:
 				count = 0
 			count += 1
-			f = open(self.path,"w")
+			f = open(self.path, "w")
 			f.write(str(count))
 			f.close()
 		except (IOError, ValueError):
 			return None
 
+
 if __name__ == "__main__":
 	pass
+
 # vim: ts=4 sw=4 noet

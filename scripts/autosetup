@@ -22,7 +22,7 @@ class AutomatedSetup:
 	def __init__(self):
 
 		try:
-			self.settings = MetroSetup().getSettings()
+			self.settings = MetroSetup().get_settings()
 		except RuntimeError as e:
 			# TODO Code this to create ~/.metro
 
