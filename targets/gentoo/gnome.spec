@@ -27,10 +27,15 @@ $[[steps/setup]]
 epro mix-in gnome || exit 1
 if [ "$[target/arch_desc]" == "x86-64bit" ]; then
 	epro mix-in gfxcard-nvidia gfxcard-amdgpu gfxcard-intel gfxcard-radeon || exit 1
+	for pkg in nvidia-kernel-modules; do
+		emerge $eopts $pkg || exit 4
+	done
+if [ "$[target/arch_desc]" == "x86-32bit" ]; then
+	epro mix-in gfxcard-intel || exit 1
 fi
 epro flavor desktop || exit 2
 emerge $eopts -uDN @world || exit 3
-for pkg in gnome metalog vim firefox linux-firmware nvidia-kernel-modules nss-mdns; do
+for pkg in gnome metalog vim firefox linux-firmware nss-mdns; do
 	emerge $eopts $pkg || exit 4
 done
 if [ -d /tmp/fsroot ]; then
