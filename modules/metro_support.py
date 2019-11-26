@@ -154,9 +154,10 @@ class StampFile(object):
 
 	def __init__(self, path):
 		self.path = path
+		self._created = False
 
-	def gen_file_contents(self):
-		return "replaceme"
+	def create(self):
+		self._created = True
 
 	def exists(self):
 		return os.path.exists(self.path)
@@ -168,8 +169,11 @@ class StampFile(object):
 			return inf.read()
 
 	def unlink(self):
-		if os.path.exists(self.path):
-			os.unlink(self.path)
+		try:
+			if os.path.exists(self.path):
+				os.unlink(self.path)
+		except FileNotFoundError:
+			pass
 
 	def wait(self, seconds):
 		elapsed = 0
@@ -182,30 +186,19 @@ class StampFile(object):
 			return False
 		return True
 
-
-class FakeLockFile(StampFile):
-
-	def __init__(self, path):
-		super().__init__(path)
-		self.hostname = subprocess.getoutput("/bin/hostname")
-		self._created = False
-
-	def create(self):
-		self._created = True
-
-	def exists(self):
-		return False
-
-	def unlink(self):
-		pass
+		def exists(self):
+			return False
 
 	def gen_file_contents(self):
 		return ""
 
-
-class LockFile(FakeLockFile):
+class LockFile(StampFile):
 
 	"""Class to create lock files; used for tracking in-progress metro builds."""
+		
+	def __init__(self, path):
+		super().__init__(path)
+		self.hostname = subprocess.getoutput("/bin/hostname")
 
 	def _from_file(self):
 		data = self.get()
@@ -216,6 +209,8 @@ class LockFile(FakeLockFile):
 	@property
 	def hostname_from_file(self):
 		file_dat = self._from_file()
+		if file_dat is None:
+			return None
 		if len(file_dat) != 2:
 			return None
 		return file_dat[0]
@@ -223,6 +218,8 @@ class LockFile(FakeLockFile):
 	@property
 	def pid_from_file(self):
 		file_dat = self._from_file()
+		if file_dat is None:
+			return None
 		if len(file_dat) != 2:
 			return None
 		return int(file_dat[1])
@@ -233,7 +230,7 @@ class LockFile(FakeLockFile):
 
 	@property
 	def created_by_me(self) -> bool:
-		if self.hostname_from_file and self.pid_from_file == os.getpid():
+		if self.hostname_from_file == self.hostname and self.pid_from_file == os.getpid():
 			return True
 		else:
 			return False
@@ -263,17 +260,20 @@ class LockFile(FakeLockFile):
 
 	def exists(self):
 		if os.path.exists(self.path):
-			if not self.created_by_me:
+			if not self.created_by_this_host:
 				sys.stderr.write("# Currently locked by %s, pid %s\n" % (self.hostname_from_file, self.pid_from_file))
 				return True
-			if not self.pid_exists:
+			elif not self.pid_exists:
 				sys.stderr.write("# Removing stale lock file: %s\n" % self.path)
-				self.unlink()
+				self._unlink()
 				return False
 			else:
 				return True
 		else:
 			return False
+
+	def _unlink(self):
+		super().unlink()
 
 	def unlink(self, force=False):
 		"""only unlink if *we* (hostname, pid) created the file. Otherwise leave alone."""
@@ -281,18 +281,14 @@ class LockFile(FakeLockFile):
 		if os.path.exists(self.path):
 			if not self.created_by_this_host:
 				if force is False:
-					sys.stderr.write("Won't unlink pidfile -- it was created by host %s!" % self.hostname_from_file)
+					sys.stderr.write("Won't unlink pidfile -- it was created by host %s!\n" % self.hostname_from_file)
 				else:
 					do_unlink = True
 			elif self.created_by_me:
 				# not only from this host, but our pid created it. So we own it, and can remove it.
 				do_unlink = True
 		if do_unlink:
-			try:
-				os.unlink(self.path)
-			except FileNotFoundError:
-				pass
-			sys.stderr.write("Lockfile removed.")
+			super().unlink()
 
 	def gen_file_contents(self):
 		mypid = os.getpid()
