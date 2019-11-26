@@ -209,13 +209,9 @@ class Metro:
 			cr.mesg("Running target %s with class %s" % (targetname, settings["target/class"]))
 
 			if settings["release/type"] == "official":
-				#Let's see if our target exists. Should we replace it? Or should we just skip it?
-				if "metro/options" in settings and "replace" in settings["metro/options"].split():
-					if os.path.exists(targ):
-						cr.mesg("Removing existing file %s..." % targ)
-						target.cmd(self.cmds["rm"] + " -f " + targ)
-				elif os.path.exists(targ):
-					cr.mesg("File %s already exists - skipping..." % targ)
+				rawtar = targ[:targ.find(".tar")] + ".tar"
+				if os.path.exists(targ) or os.path.exists(rawtar):
+					cr.mesg("Target already exists - skipping...")
 					target.run_script("trigger/ok/run", optional=True)
 					continue
 			else:

@@ -363,9 +363,6 @@ for release in all_builds:
 						bdir.date = datetime.datetime(1980,1,1)
 						bdir.date_str = "1980-01-01"
 					artifacts["stage3"] = find_file_compressed_or_not("%s/stage3*.tar*" % ipath)
-					if artifacts["stage3"]is not None:
-						# if we just have a stage3, we consider it "complete" for our purposes, for now
-						complete = True
 					artifacts["openvz"] = find_file_compressed_or_not("%s/funtoo-*-openvz-*.tar*" % ipath)
 					artifacts["lxd"] = find_file_compressed_or_not("%s/lxd-*.tar*" % ipath)
 					artifacts["gnome"] = find_file_compressed_or_not("%s/gnome-*.tar*" % ipath)
@@ -429,13 +426,13 @@ now = datetime.datetime.now()
 def find_build(q, min_age=stale_days, max_age=None):
 	for x in q:
 		if min_age is not None:
-			if x.date is not None and now - x.date < datetime.timedelta(days=min_age):
-				continue	
-		if max_age is not None:
-			if x.date is None:
+			if x.full_date is not None and now - x.full_date < datetime.timedelta(days=min_age):
 				continue
-			elif now - x.date > datetime.timedelta(days=max_age):
-				continue	
+		if max_age is not None:
+			if x.full_date is None:
+				continue
+			elif now - x.full_date > datetime.timedelta(days=max_age):
+				continue
 		# skip it if it is currently being built....
 		tsfilepath = x.path+"/.control/.multi_progress"
 		if os.path.exists(tsfilepath):
