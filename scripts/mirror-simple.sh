@@ -12,6 +12,11 @@ if [ -z "$mp" ]; then
 else
 	echo "Mirroring $mp..."
 fi
-rsync -rltJOve ssh --partial --progress --delete --exclude *.cme --exclude *.cme.run --exclude stage1*.tar* --exclude stage2*.tar* --exclude *.tar $mp/1.4-release-std/ drobbins@upload.funtoo.org:/home/mirror/funtoo/1.4-release-std/
+rsync -rltJOve ssh --partial --progress --exclude *.cme --exclude *.cme.run --exclude stage1*.tar* --exclude stage2*.tar* --exclude *.tar $mp/1.4-release-std/ drobbins@upload.funtoo.org:/home/mirror/funtoo/1.4-release-std/
 rsync -rltJOve ssh --partial --progress --delete --exclude *.tar $mp/livecd drobbins@upload.funtoo.org:/home/mirror/funtoo/
 ssh drobbins@upload.funtoo.org sudo /root/metro/scripts/buildrepo index.xml
+# don't delete until we've reindexed.
+rsync -rltJOve ssh --partial --progress --exclude *.cme --exclude *.cme.run --exclude stage1*.tar* --exclude stage2*.tar* --exclude *.tar $mp/1.4-release-std/ drobbins@upload.funtoo.org:/home/mirror/funtoo/1.4-release-std/ --delete
+# reindex again.
+ssh drobbins@upload.funtoo.org sudo /root/metro/scripts/buildrepo index.xml
+
