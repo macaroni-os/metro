@@ -11,6 +11,6 @@ pkgcache: stage1
 ok/run: [
 #!/bin/bash
 
-install -d $[path/mirror/target/control]/version || exit 1
+install -o $[path/mirror/owner] -g $[path/mirror/group] -m 0$[path/mirror/dirmode] -d $[path/mirror/target/control]/version || exit 1
 echo "$[target/version]" > $[path/mirror/target/control]/version/stage1 || exit 1
 ]

@@ -13,6 +13,9 @@ __license__ = """ Distributed under the terms of the GNU General Public License 
 __status__ = "Release"
 __version__ = "2.0.0"
 
+import shutil
+
+
 def usage():
 	version()
 	print(""" metro [OPTION]... [FILE]...
@@ -41,6 +44,25 @@ def version():
 	print(" Documentation: http://www.funtoo.org/Metro")
 	print()
 	print(__license__)
+
+
+def create_mirror_path(settings, path):
+	root = settings["path/mirror"]
+	if not path.startswith(root):
+		raise ValueError("Path must be absolute and within mirror path root of %s." % root)
+	subpath = path[len(root):]
+	if subpath[0] == "/":
+		subpath = subpath[1:]
+	cur_path = root
+	dirmode = int(settings["path/mirror/dirmode"],8)
+	for path_el in subpath.split("/"):
+		cur_path = os.path.join(cur_path, path_el)
+		if os.path.exists(cur_path) and not os.path.isdir(cur_path):
+			raise PermissionError("Can't create path %s -- %s already exists and is not directory." % ( path, cur_path ))
+		if not os.path.exists(path_el):
+			os.mkdir(path_el, mode=dirmode)
+			shutil.chown(path_el, user=settings["path/mirror/owner"], group=settings["path/mirror/group"])
+
 
 class Metro:
 	def __init__(self):
@@ -176,7 +198,7 @@ class Metro:
 		# create a .targets file listing the targets we are building. This way, we can later check to see
 		# (in buildrepo) if all of these targets built, or not.
 		if not os.path.exists(initial_settings["path/mirror/target/path"]):
-			os.makedirs(initial_settings["path/mirror/target/path"])
+			create_mirror_path(initial_settings, initial_settings["path/mirror/target/path"])
 		with open(initial_settings["path/mirror/target/path"] + "/.targets", "w") as targfile:
 			for target in targetlist:
 				if target != "snapshot":
