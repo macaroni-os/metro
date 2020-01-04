@@ -59,9 +59,9 @@ def create_mirror_path(settings, path):
 		cur_path = os.path.join(cur_path, path_el)
 		if os.path.exists(cur_path) and not os.path.isdir(cur_path):
 			raise PermissionError("Can't create path %s -- %s already exists and is not directory." % ( path, cur_path ))
-		if not os.path.exists(path_el):
-			os.mkdir(path_el, mode=dirmode)
-			shutil.chown(path_el, user=settings["path/mirror/owner"], group=settings["path/mirror/group"])
+		if not os.path.exists(cur_path):
+			os.mkdir(cur_path, mode=dirmode)
+			shutil.chown(cur_path, user=settings["path/mirror/owner"], group=settings["path/mirror/group"])
 
 
 class Metro:
