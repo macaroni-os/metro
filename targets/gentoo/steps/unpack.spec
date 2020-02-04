@@ -80,7 +80,7 @@ if [ "$[release/type]" == "official" ]; then
 	scomp="${snap##*.}"
 	if [ "$[snapshot/source/type]" == "meta-repo" ]; then
 		outdir=/var/git
-		[ ! -d $[path/chroot]/var/git ] && install -d $[path/chroot]/var/git --mode=0755
+		[ ! -d $[path/chroot]/var/git ] && install -d $[path/chroot]/var/git -o 250 -g 250 --mode=0755
 	else
 		outdir=/usr
 		[ ! -d $[path/chroot]/usr/portage ] && install -d $[path/chroot]/usr/portage --mode=0755
