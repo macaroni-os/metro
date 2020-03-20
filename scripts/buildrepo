@@ -270,7 +270,7 @@ initial_path = settings["path/mirror"]
 def find_file_compressed_or_not(glob_pattern):
 	found_match = None
 	for match in glob.glob(glob_pattern):
-		for ending in [ ".tar.bz2", "tar.gz", "tar.xz", ".tar" ]:
+		for ending in [ "tar.gz", "tar.xz", ".tar" ]:
 			if match.endswith(ending):
 				found_match = match
 				break
@@ -608,20 +608,25 @@ elif sys.argv[1] == "compress":
 				print("Compression in progress, skipping...")
 				continue
 			comp = settings["target/compression"]
-			if comp in [ "bz2", "xz", "gz" ]:
+			if comp in [ "xz", "gz" ]:
 				print("Compressing file %s..." % tarfile)
 				Path(entry.path+".run").touch()
-				if comp == "bz2":
-					call("PATH=/bin/:/usr/bin bzip2 -9 " + tarfile, shell=True)
-				elif comp == "xz":
-					call("PATH=/bin/:/usr/bin xz -9e --threads=0 " + tarfile, shell=True)
+				if comp == "xz":
+					ext=".xz.progress"
+					final_ext=".xz"
+					call("PATH=/bin/:/usr/bin xz -9e --threads=0 -S .xz.progress " + tarfile, shell=True)
 				elif comp == "gz":
-					call("PATH=/bin/:/usr/bin gzip -9 " + tarfile, shell=True)
+					ext=".gz.progress"
+					final_ext=".gz"
+					call("PATH=/bin/:/usr/bin gzip -9 -S .gz.progress " + tarfile, shell=True)
+				# rename .xz.progress file to .xz:
+				os.link(tarfile + ext, tarfile + final_ext)
+				os.unlink(tarfile + ext)
 				try:
 					os.unlink(entry.path+".run")
 				except:
 					pass
-			# remove .cme file, and set p to the new compressed file.
+			# remove .cme file:
 			os.unlink(entry.path)
 		else:
 			print(tarfile, "doesn't exist, can't compress.")
@@ -638,7 +643,7 @@ elif sys.argv[1] == "digestgen":
 		for entry in os.scandir(path):
 			if entry.is_file():
 				ending = entry.name.split('.')
-				if len(ending) and ending[-1] in [ "gz", "bz2", "xz" ]:
+				if len(ending) and ending[-1] in [ "gz", "xz" ]:
 					if len(ending) >= 2 and ending[-2] == "tar":
 						yield entry
 			elif entry.is_dir():
