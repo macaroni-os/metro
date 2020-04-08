@@ -615,11 +615,11 @@ elif sys.argv[1] == "compress":
 					if comp == "xz":
 						ext=".xz.progress"
 						final_ext=".xz"
-						call("PATH=/bin/:/usr/bin xz -9e --threads=0 -S .xz.progress " + tarfile, shell=True)
+						call("PATH=/bin/:/usr/bin xz -f -9e --threads=0 -S .xz.progress " + tarfile, shell=True)
 					elif comp == "gz":
 						ext=".gz.progress"
 						final_ext=".gz"
-						call("PATH=/bin/:/usr/bin gzip -9 -S .gz.progress " + tarfile, shell=True)
+						call("PATH=/bin/:/usr/bin gzip -f -9 -S .gz.progress " + tarfile, shell=True)
 					# rename .xz.progress file to .xz:
 					os.link(tarfile + ext, tarfile + final_ext)
 					os.unlink(tarfile + ext)
