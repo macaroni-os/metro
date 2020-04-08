@@ -175,6 +175,7 @@ if [ -e /etc/make.conf ]; then
 else
 	mkconf=/etc/portage/make.conf
 fi
+echo "" > $mkconf
 export ROOT=$[portage/ROOT]
 if [ -e $ROOT/etc/ego.conf ]; then
 	# we have a custom sync_base_url set but we don't want it in released stages.
