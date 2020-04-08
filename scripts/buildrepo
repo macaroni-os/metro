@@ -608,20 +608,22 @@ elif sys.argv[1] == "compress":
 				print("Compression in progress, skipping...")
 				continue
 			comp = settings["target/compression"]
-			if comp in [ "xz", "gz" ]:
-				print("Compressing file %s..." % tarfile)
-				Path(entry.path+".run").touch()
-				if comp == "xz":
-					ext=".xz.progress"
-					final_ext=".xz"
-					call("PATH=/bin/:/usr/bin xz -9e --threads=0 -S .xz.progress " + tarfile, shell=True)
-				elif comp == "gz":
-					ext=".gz.progress"
-					final_ext=".gz"
-					call("PATH=/bin/:/usr/bin gzip -9 -S .gz.progress " + tarfile, shell=True)
-				# rename .xz.progress file to .xz:
-				os.link(tarfile + ext, tarfile + final_ext)
-				os.unlink(tarfile + ext)
+			try:
+				if comp in [ "xz", "gz" ]:
+					print("Compressing file %s..." % tarfile)
+					Path(entry.path+".run").touch()
+					if comp == "xz":
+						ext=".xz.progress"
+						final_ext=".xz"
+						call("PATH=/bin/:/usr/bin xz -9e --threads=0 -S .xz.progress " + tarfile, shell=True)
+					elif comp == "gz":
+						ext=".gz.progress"
+						final_ext=".gz"
+						call("PATH=/bin/:/usr/bin gzip -9 -S .gz.progress " + tarfile, shell=True)
+					# rename .xz.progress file to .xz:
+					os.link(tarfile + ext, tarfile + final_ext)
+					os.unlink(tarfile + ext)
+			finally:
 				try:
 					os.unlink(entry.path+".run")
 				except:
