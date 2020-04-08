@@ -24,7 +24,13 @@ then
 	exit 1
 fi
 # cme = "compress me"
-touch $tarout.cme
+if [ "$[target]" = "stage2" ]; then
+    echo "Skipping compression for stage2"
+elif [ "$[target]" = "stage1" ]; then
+    echo "Skipping compression for stage1"
+else
+    touch $tarout.cme
+fi
 # Note: we used to compress here. We no longer do. We want that handled out-of-band
 # for performance reasons.
 chown $[path/mirror/owner]:$[path/mirror/group] "$tarout" "${tarout}.cme"
