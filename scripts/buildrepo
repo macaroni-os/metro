@@ -605,7 +605,7 @@ elif sys.argv[1] == "compress":
 		tarfile = entry.path[:-4]
 		if os.path.exists(tarfile):
 			if os.path.exists(entry.path+".run"):
-				print("Compression in progress, skipping...")
+				print(f"Compression of {entry.path} in progress, skipping...")
 				continue
 			comp = settings["target/compression"]
 			try:
