@@ -639,7 +639,6 @@ elif sys.argv[1] == "digestgen":
 	uid = pwd.getpwnam(owner)[2]
 	gid = grp.getgrnam(group)[2] 
 	print("Generating hashes...")
-	links = []
 
 	def get_all_relevant_files(path):
 		for entry in os.scandir(path):
@@ -659,7 +658,6 @@ elif sys.argv[1] == "digestgen":
 			for entry in get_all_relevant_files(subarch.path):
 				p = entry.path
 				if os.path.islink(p):
-					links.append(p)
 					continue
 				print(p)
 				if not os.path.exists(p+".hash.txt"):
@@ -673,37 +671,6 @@ elif sys.argv[1] == "digestgen":
 					call("PATH=/bin/:/usr/bin gpg --batch --homedir /root/.gnupg --use-agent --output %s.gpg --detach-sig %s" % (p, p), env=os.environ, shell=True) 
 				if os.path.exists(p+".gpg"):
 					os.lchown(p+".gpg",uid,gid)
-				# CLEANUP LOOP START:
-				# for every link to a tarball, make sure that links to hashes are in place.
-				# also clean up dead tarball links:
-	for link in links:
-		# link = link to a TARBALL
-		abs_realpath = os.path.normpath(os.path.join(os.path.dirname(link),os.readlink(link)))
-		if os.path.exists(abs_realpath):
-			dead = False
-		else:
-			# tarball link is stale, doesn't exist at all
-			dead = True
-			print(link + " dead; cleaning up")
-		if dead:
-			os.unlink(link)
-		for ext in ['.hash.txt', '.gpg']:
-			extlink = link + ext
-			# if link to hash or gpg exists...
-			if dead and os.path.lexists(extlink):
-				# remove it!
-				print(extlink + " dead; cleaning up")
-				os.unlink(extlink)
-			# if the real hash file exists...
-			if not dead and os.path.exists(abs_realpath + ext):
-				# create link to hash!
-				if os.path.lexists(extlink):
-					os.unlink(extlink)
-				os.symlink(os.readlink(link) + ext, extlink)
-			if os.path.lexists(extlink):
-				# we found a link, let's make sure it has correct perms
-				os.lchown(extlink, uid, gid)
-		# CLEANUP LOOP START
 	print()
 	print("Cleaning up old hashes...")
 	# This check goes the other way -- find all hashes, and make sure that the corresponding tarball exists. Otherwise,

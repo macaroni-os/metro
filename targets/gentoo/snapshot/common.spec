@@ -8,20 +8,6 @@ name: $[portage/name/full]
 # This defines what internal Metro class is used to build this target
 class: snapshot
 
-[section path/mirror]
-
-# "latest" symlink:
-link: $[]/$[:snapshot/subpath]/$[portage/name]-$[:link/suffix].tar.$[snapshot/compression]
-link/dest: $[portage/name/full].tar.$[snapshot/compression]
-
-[section trigger]
-
-ok/run: [
-#!/bin/bash
-# CREATE latest symlink for the snapshot
-ln -sf $[path/mirror/link/dest] $[path/mirror/link] || exit 3
-]
-
 [section steps]
 
 run: [

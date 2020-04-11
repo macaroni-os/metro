@@ -1,8 +1,6 @@
 [section path/mirror]
 
 target/basename: $[target/name].box
-target/latest: $[target/name/latest].box
-target/full_latest: $[target/name/full_latest].box
 
 [section steps]
 

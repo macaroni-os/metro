@@ -1,12 +1,9 @@
 [collect ./stage.spec]
-[collect ../steps/symlink.spec]
 
 [section target]
 
 name: stage3-$[:subarch]-$[:build]-$[:version]
 name/prefix: stage3-$[:subarch]-
-name/latest: stage3-$[path/mirror/link/suffix]
-name/full_latest: stage3-$[:subarch]-$[:build]-$[path/mirror/link/suffix]
 pkgcache: stage3
 
 [section trigger]
@@ -22,7 +19,4 @@ if [ "$[strategy/build]" == "remote" ]; then
 	# git snapshot QA builds remain locked in remote state.
 	echo "local" > $[path/mirror/target/control]/strategy/build
 fi
-
-
-$[[trigger/ok/symlink]]
 ]
