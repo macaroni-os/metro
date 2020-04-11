@@ -11,15 +11,9 @@ if [ -z "$mp" ]; then
 else
 	echo "Mirroring $mp..."
 fi
-EXTRA_EXCLUDES="--exclude=*2019-* --exclude=*2020-01* --exclude=*2020-02*"
+EXTRA_EXCLUDES="--exclude=selinux* --exclude=*2019-* --exclude=*2020-01* --exclude=*2020-02* --delete-excluded"
 EXCLUDES="--exclude *.cme --exclude *.cme.run --exclude *.progress --exclude stage1*.tar* --exclude stage2*.tar* --exclude *.tar"
-rclone -Pl $EXCLUDES $EXTRA_EXCLUDES --b2-chunk-size=8M --b2-upload-cutoff=16M --transfers=8 --checkers=12 sync /home/mirror/funtoo/1.4-release-std b2:funtoo-mirror/1.4-release-std
-
-#rsync -rltJOve ssh --partial --progress --perms --chmod=Dugo+x,ugo+r,go-w $CUSTOM_EXCLUDE --exclude *.cme --exclude *.cme.run --exclude *.progress --exclude stage1*.tar* --exclude stage2*.tar* --exclude *.tar $mp/1.4-release-std/ drobbins@upload.funtoo.org:/home/mirror/funtoo/1.4-release-std/
-#rsync -rltJOve ssh --partial --progress --perms --chmod=Dugo+x,ugo+r,go-w --exclude *.tar $mp/livecd drobbins@upload.funtoo.org:/home/mirror/funtoo/ --delete
-#ssh drobbins@upload.funtoo.org development/metro/scripts/buildrepo index.xml
-# don't delete until we've reindexed.
-#rsync -rltJOve ssh --partial --progress --perms --chmod=Dugo+x,ugo+r,go-w $CUSTOM_EXCLUDE --exclude *.cme --exclude *.cme.run --exclude *.progress --exclude stage1*.tar* --exclude stage2*.tar* --exclude *.tar $mp/1.4-release-std/ drobbins@upload.funtoo.org:/home/mirror/funtoo/1.4-release-std/ --delete
-# reindex again.
-#ssh drobbins@upload.funtoo.org development/metro/scripts/buildrepo index.xml
-
+/root/metro/scripts/buildrepo index.xml
+rclone -Pl $EXCLUDES $EXTRA_EXCLUDES --b2-chunk-size=8M --b2-upload-cutoff=16M --transfers=8 --checkers=12 sync /home/mirror/funtoo b2:funtoo-mirror
+rclone cleanup b2:funtoo-mirror
+ssh drobbins@upload.funtoo.org rclone sync -lP b2:funtoo-mirror/ /home/mirror/funtoo/
