@@ -640,38 +640,24 @@ elif sys.argv[1] == "digestgen":
 	gid = grp.getgrnam(group)[2] 
 	print("Generating hashes...")
 
-	def get_all_relevant_files(path):
-		for entry in os.scandir(path):
-			if entry.is_file():
-				ending = entry.name.split('.')
-				if len(ending) and ending[-1] in [ "gz", "xz" ]:
-					if len(ending) >= 2 and ending[-2] == "tar":
-						yield entry
-			elif entry.is_dir():
-				yield from get_all_relevant_files(entry.path)
+	for root, dirnames, filenames in os.walk(initial_path):
+		for filename in fnmatch.filter(filenames, '*.xz'):
+			p = os.path.join(root, filename)
+			if os.path.islink(p):
+				continue
+			if not os.path.exists(p+".hash.txt"):
+				sys.stdout.write('h')
+				sys.stdout.flush()
+				call("PATH=/bin/:/usr/bin echo sha256 $(sha256sum %s | cut -f1 -d' ') > %s.hash.txt" % ( p, p ), shell=True)
+			os.lchown(p+".hash.txt",uid,gid)
+			if not os.path.exists(p+".gpg"):
+				sys.stdout.flush()
+				call("PATH=/bin/:/usr/bin gpg --batch --homedir /root/.gnupg --use-agent --output %s.gpg --detach-sig %s" % (p, p), env=os.environ, shell=True) 
+			if os.path.exists(p+".gpg"):
+				os.lchown(p+".gpg",uid,gid)
 
-	with db.get_session() as session:
-		# only generate digests for the subarches of our local build system:
-		all_subarches = session.query(db.SubArch)
-		for subarch in all_subarches:
-			print("Processing %s..." % subarch.path)
-			for entry in get_all_relevant_files(subarch.path):
-				p = entry.path
-				if os.path.islink(p):
-					continue
-				print(p)
-				if not os.path.exists(p+".hash.txt"):
-					sys.stdout.write('h')
-					sys.stdout.flush()
-					call("PATH=/bin/:/usr/bin echo sha256 $(sha256sum %s | cut -f1 -d' ') > %s.hash.txt" % ( p, p ), shell=True)
-				os.lchown(p+".hash.txt",uid,gid)
-				if not os.path.exists(p+".gpg"):
-					print(p+".gpg")
-					sys.stdout.flush()
-					call("PATH=/bin/:/usr/bin gpg --batch --homedir /root/.gnupg --use-agent --output %s.gpg --detach-sig %s" % (p, p), env=os.environ, shell=True) 
-				if os.path.exists(p+".gpg"):
-					os.lchown(p+".gpg",uid,gid)
-	print()
+	# TODO: verify gpg signatures are correct.
+
 	print("Cleaning up old hashes...")
 	# This check goes the other way -- find all hashes, and make sure that the corresponding tarball exists. Otherwise,
 	# remove.
