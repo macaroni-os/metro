@@ -1,3 +1,5 @@
+[collect ./stage.spec]
+
 [section target]
 
 pkgcache: $[target]
