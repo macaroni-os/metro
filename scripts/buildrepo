@@ -306,7 +306,6 @@ for release in all_builds:
 				path = "%s/%s/%s/%s" % (initial_path, release, arch, subarch)
 				if not os.path.exists(path):
 					continue
-
 				most_recent_build = None
 				most_recent_complete_build = None
 				most_recent_complete_build_id = None
@@ -339,7 +338,6 @@ for release in all_builds:
 					artifacts = {}
 
 					# CREATE NEW BUILD DIR DB ENTRY:
-
 					bdir = db.BuildDir()
 					spath = ipath + "/status"
 					if os.path.exists(spath):
@@ -351,9 +349,10 @@ for release in all_builds:
 							bdir.date = datetime.datetime.utcfromtimestamp(os.path.getmtime(spath))
 							# use that to generate date string:
 							bdir.date_str = bdir.date.strftime("%Y-%m-%d")
-					else:
-						# build is in progress, so skip:
-						continue
+					#else:
+					#	# build is in progress, so skip:
+					#	print("build at", path, "in progress, skipping...")
+					#	continue
 					# datestamped build dir -- let's try to parse it:
 					try:
 						bdir.date = datetime.datetime.strptime(dirname,"%Y-%m-%d")
@@ -470,10 +469,14 @@ if sys.argv[1] == "clean":
 				for subarch in all_subarches:
 					out = session.query(db.BuildDir).filter_by(release=release).filter_by(arch=arch)
 					out = out.filter_by(subarch_name=subarch).filter_by(complete=True).order_by(db.BuildDir.date_str).all()
+					kept = 0
 					for x in out[0:-keep_num]:
 						print(("rm -rf %s" % x.path))
+						kept += 1
 					for x in out[-keep_num:]:
 						print(("# keeping %s" % x.path))
+					for incomp in session.query(db.BuildDir).filter_by(release=release).filter_by(arch=arch).filter_by(subarch_name=subarch).filter_by(complete=False).filter(db.BuildDir.date < (datetime.datetime.now() - datetime.timedelta(days=2)).strftime("%Y-%m-%d")):
+						print("rm -rf %s # incomplete and more than a day old" % incomp.path)
 			# next, remove any more than keep_num snapshots:
 			sna = session.query(db.Snapshot).filter_by(release=release).order_by(db.Snapshot.path).all()
 			for x in sna[0:-keep_num]:
