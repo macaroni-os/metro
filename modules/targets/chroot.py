@@ -80,7 +80,7 @@ class ChrootTarget(BaseTarget):
 				for fchroot_bin in [ "/root/fchroot/bin/fchroot-simple", "/usr/bin/fchroot-simple" ]:
 					if os.path.exists(fchroot_bin):
 						found_chroot_bin = self.cmds["chroot"] = fchroot_bin
-					break
+						break
 				if found_chroot_bin is None:
 					raise MetroError("Please install fchroot to /usr/bin or clone fchroot git repo to /root for non-native binary support.")
 
