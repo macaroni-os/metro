@@ -111,10 +111,13 @@ return buildtype
 	sys.exit(1)
 
 if len(all_builds) == 0:
-	# if the all_variables are not defined, inherit values from the non-all vars:
 	all_builds = builds
-	all_arches = arches
+
+if len(all_subarches) == 0:
 	all_subarches = subarches
+
+if len(all_arches) == 0:
+	all_arches = arches
 
 class Database(object):
 	poolclass = NullPool
@@ -274,8 +277,6 @@ def find_file_compressed_or_not(glob_pattern):
 			if match.endswith(ending):
 				found_match = match
 				break
-		if found_match:
-			break
 	return found_match
 
 if os.path.exists("cleaner.db"):
@@ -300,7 +301,6 @@ for release in all_builds:
 		for arch in all_arches:
 			funky_path = "%s/%s/%s" % ( initial_path, release, arch )
 			if not os.path.exists(funky_path):
-				print("Path not found: %s" % funky_path)
 				continue
 			for subarch in all_subarches:
 				path = "%s/%s/%s/%s" % (initial_path, release, arch, subarch)
