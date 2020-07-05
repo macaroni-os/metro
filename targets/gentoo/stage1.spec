@@ -67,9 +67,11 @@ if [ -n "$gcc_list" ]; then
 	else
 		echo "No gcc versions to clean (installed: $(cd /var/db/pkg/sys-devel; ls -d gcc-[0-9]*))"
 fi
-emerge -1u $eopts sys-devel/gcc || die
-emerge -1u sys-apps/portage || die
-emerge -1u --nodeps app-admin/ego || die
+
+#emerge -1u $eopts sys-devel/gcc || die
+emerge -C gentoolkit
+cd /var/git/meta-repo/kits/*/*/python-exec
+ebuild $(ls python-exec-2*.ebuild | sort -u | tail -n 1) clean merge || die
 
 # update python
 pyver=$[version/python]
@@ -92,7 +94,9 @@ fi
 # switch to correct python
 eselect python set python$[version/python] || die
 eselect python cleanup
-emerge -1 --nodeps ego portage
+emerge --nodeps setuptools || die
+emerge -1u sys-apps/portage || die
+emerge -1u --nodeps app-admin/ego || die
 
 # let's say openssl is upgraded -- we may need to rebuild lots of things. So we gotta take care of this:
 emerge $eopts -uDN @world || die
@@ -100,7 +104,7 @@ emerge $eopts @preserved-rebuild || die
 # so now, we have upgraded stuff, and have the right libs installed that things going to /tmp/stage1root
 # will link to... and can proceed.
 
-ego sync --config-only
+ego sync --no-meta
 
 cat > /tmp/build.py << "EOF"
 $[[files/pythonjunk]]

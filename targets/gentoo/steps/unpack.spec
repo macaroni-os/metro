@@ -123,7 +123,7 @@ $[profile/flavor:zap]
 EOF
 $[[steps/ego/prep]]
 		cat $[path/chroot]/etc/ego.conf
-		ROOT=$[path/chroot] /root/ego/ego sync --kits-only || exit 9
+		ROOT=$[path/chroot] /root/ego/ego sync --no-meta || exit 9
 ]
 
 env: [

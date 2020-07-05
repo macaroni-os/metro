@@ -5,7 +5,7 @@
 
 setup: [
 #!/bin/bash
-ego sync --config-only
+ego sync --no-meta
 /usr/sbin/env-update
 # This should switch to most recent compiler:
 gcc_num=$(gcc-config -l | grep \\[ | wc -l)

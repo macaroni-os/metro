@@ -27,7 +27,7 @@ $[[steps/ego/prep]]
 			ego $*
 		fi
 	}
-	run_ego sync --dest=$[path/work]/meta-repo --meta-repo-only
+	run_ego sync --dest=$[path/work]/meta-repo --no-kits
 	tar -c -C $[path/work] meta-repo > $tarout || die "Couldn't create tar archive"
 else
 	die "snapshot/type: live is only supported for snapshot/source/type: git or meta-repo"
