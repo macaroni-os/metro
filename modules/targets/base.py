@@ -125,10 +125,10 @@ class BaseTarget:
 			if badval:
 				# This code is here because tar has a retval of 1 for non-fatal warnings
 				if retval == badval:
-					raise MetroError(myexc)
+					raise MetroError(f'{myexc} (error code {retval}')
 			else:
 				if retval != 0:
-					raise MetroError(myexc)
+					raise MetroError(f'{myexc} (error code {retval}')
 		except:
 			raise
 

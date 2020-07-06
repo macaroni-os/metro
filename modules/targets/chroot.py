@@ -161,13 +161,15 @@ class ChrootTarget(BaseTarget):
 		self.mounts["/proc"] = "/proc"
 
 	def unbind(self, attempt=0):
-		mounts = self.get_active_mounts()
+		mounts = [ "foo" ]
+		no_progress = 0
 		while len(mounts) != 0:
+			mounts = self.get_active_mounts()
 			# now, go through our dictionary and try to unmount
 			progress = 0
 			mpos = 0
 			while mpos < len(mounts):
-				time.sleep(0.1)
+				time.sleep(0.2)
 				self.cmd("umount -Rl "+mounts[mpos], badval=10)
 				if not ismount(mounts[mpos]):
 					del mounts[mpos]
@@ -175,6 +177,8 @@ class ChrootTarget(BaseTarget):
 				else:
 					mpos += 1
 			if progress == 0:
+				no_progress += 1
+			if no_progress >= 5:
 				break
 
 		mounts = self.get_active_mounts()
