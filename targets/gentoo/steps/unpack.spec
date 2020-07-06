@@ -69,6 +69,7 @@ fi
 if [ -n "$(ls $[path/chroot]/usr/lib.backup.* 2>/dev/null)" ]; then
 	rm -rf $[path/chroot]/usr/lib.backup.* || exit 26
 fi
+cp -a /root/ego/ego $[path/chroot]/var/tmp || exit 27
 ]
 
 snapshot: [
