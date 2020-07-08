@@ -94,7 +94,7 @@ fi
 # switch to correct python
 eselect python set python$[version/python] || die
 eselect python cleanup
-emerge --nodeps setuptools || die
+emerge -1 setuptools || die
 emerge -1u sys-apps/portage || die
 emerge -1u --nodeps app-admin/ego || die
 
