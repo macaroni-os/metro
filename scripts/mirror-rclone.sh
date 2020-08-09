@@ -14,6 +14,6 @@ fi
 EXTRA_EXCLUDES="--exclude=selinux* --exclude=*2019-* --exclude=*2020-01* --exclude=*2020-02* --delete-excluded"
 EXCLUDES="--exclude *.cme --exclude *.cme.run --exclude *.progress --exclude stage1*.tar* --exclude stage2*.tar* --exclude *.tar"
 /root/metro/scripts/buildrepo index.xml
-rclone -Pl $EXCLUDES $EXTRA_EXCLUDES --b2-chunk-size=36M --b2-upload-cutoff=36M --transfers=18 --checkers=24 sync /home/mirror/funtoo b2:funtoo-mirror
+rclone -Pl $EXCLUDES $EXTRA_EXCLUDES --b2-chunk-size=36M --b2-upload-cutoff=36M --transfers=18 --checkers=24 sync /mnt/data/mirror/funtoo b2:funtoo-mirror
 rclone cleanup b2:funtoo-mirror
 ssh drobbins@upload.funtoo.org rclone sync -lP b2:funtoo-mirror/ /home/mirror/funtoo/
