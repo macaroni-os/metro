@@ -26,7 +26,15 @@ chroot/run: [
 $[[steps/setup]]
 epro mix-in gnome || exit 1
 if [ "$[target/arch_desc]" == "x86-64bit" ]; then
-	epro mix-in gfxcard-nvidia gfxcard-amdgpu gfxcard-intel gfxcard-radeon || exit 1
+	epro mix-in gfxcard-nvidia gfxcard-amdgpu gfxcard-radeon || exit 1
+	case "$[target/subarch]" in
+		intel64-skylake|intel64-broadwell)
+			epro mix-in gfxcard-intel-iris || exit 2
+			;;
+		intel64-*|generic_64)
+			epro mix-in gfxcard-intel || exit 2
+			;;
+	esac
 	for pkg in nvidia-kernel-modules; do
 		emerge $eopts $pkg || exit 4
 	done
@@ -35,7 +43,7 @@ elif [ "$[target/arch_desc]" == "x86-32bit" ]; then
 fi
 epro flavor desktop || exit 2
 emerge $eopts -uDN @world || exit 3
-for pkg in gnome metalog vim firefox linux-firmware nss-mdns; do
+for pkg in gnome metalog vim firefox linux-firmware nss-mdns xorg-x11; do
 	emerge $eopts $pkg || exit 4
 done
 if [ -d /tmp/fsroot ]; then
