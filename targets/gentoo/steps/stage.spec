@@ -75,7 +75,7 @@ then
 	if [ -n "$toolchain_version" ]; then
 		export PKGDIR="$PKGDIR/$toolchain_version"
 	fi
-	eopts="$[emerge/options] --usepkg --buildpkg"
+	eopts="$[emerge/options] --usepkg --with-bdeps=y --buildpkg"
 else
 	eopts="$[emerge/options]"
 fi
