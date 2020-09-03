@@ -43,7 +43,7 @@ elif [ "$[target/arch_desc]" == "x86-32bit" ]; then
 fi
 epro flavor desktop || exit 2
 emerge $eopts -uDN @world || exit 3
-for pkg in gnome metalog vim firefox linux-firmware nss-mdns xorg-x11; do
+for pkg in gnome metalog vim linux-firmware nss-mdns xorg-x11; do
 	emerge $eopts $pkg || exit 4
 done
 if [ -d /tmp/fsroot ]; then
