@@ -24,7 +24,7 @@ fi
 echo "Extracting source stage $src..."
 
 # Perform the extraction:
-tar -xp --exclude='./dev/*' -f "$src" -C $[path/chroot] || exit 3
+tar --xattrs --xattrs-include='*' -xp --exclude='./dev/*' -f "$src" -C $[path/chroot] || exit 3
 
 # let's fix /lib if it is a problematic state. Note that this is NOT multilib-compatible.
 if [ -d $[path/chroot]/lib ] && [ -d $[path/chroot]/lib64 ] && [ ! -h $[path/chroot]/lib ]; then
