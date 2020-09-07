@@ -142,6 +142,8 @@ class ChrootTarget(BaseTarget):
 
 	def bind(self):
 		""" Perform bind mounts """
+		self.cr.mesg("Mounting /sys in chroot...")
+		os.system(self.cmds["mount"]+" --rbind /sys %s/sys" % self.settings["path/work"])
 		self.cr.mesg("Mounting /proc in chroot...")
 		os.system(self.cmds["mount"]+" none -t proc %s/proc" % self.settings["path/work"])
 		self.cr.mesg("Mounting /dev in chroot...")
