@@ -56,6 +56,8 @@ net-misc/memcached
 media-gfx/imagemagick
 "
 
+# net-misc/rclone (broken atm: FL-7458)
+
 BASE_PKGS="
 app-admin/metalog
 app-misc/tmux
@@ -64,7 +66,6 @@ mail-mta/postfix
 net-analyzer/iptraf-ng
 net-misc/autossh
 net-misc/mosh
-net-misc/rclone
 net-misc/zerotier
 sys-process/fcron
 sys-process/htop
@@ -73,6 +74,7 @@ sys-process/htop
 DB_PKGS="
 dev-db/mongodb
 dev-db/mysql-community
+dev-db/postgresql
 "
 
 PY_PKGS="
