@@ -635,7 +635,30 @@ elif sys.argv[1] == "compress":
 			os.unlink(entry.path)
 		else:
 			print(tarfile, "doesn't exist, can't compress.")
-
+elif sys.argv[1] == "prefetch":
+	url = settings["cdn/url"]
+	cdn_id = settings["cdn/id"]
+	passwd = settings["cdn/passwd"]
+	mirr_path = settings["path/mirror"]
+	with db.get_session() as session:
+		for release in all_builds:
+			# first -- remove any more than keep_num complete builds, starting with oldest, of course:
+			thang = {
+				"login" : "drobbins@funtoo.org",
+				"passwd" : passwd,
+				"url" : []
+			}
+			for arch in all_arches:
+				for subarch in all_subarches:
+					out = session.query(db.BuildDir).filter_by(release=release).filter_by(arch=arch)
+					out = out.filter_by(subarch_name=subarch).filter_by(complete=True).order_by(db.BuildDir.date_str).all()
+					if len(out):
+						for artifact in session.query(db.Artifact).filter_by(build_dir_id=out[-1].id):
+							if artifact.flavor in [ "gnome", "stage3" ]:
+								thang['url'].append(artifact.path[len(mirr_path):])
+	response = http_client.fetch(url, method='POST', body=urllib.parse.urlencode(thang))
+	print(response)
+	
 elif sys.argv[1] == "digestgen":
 	owner = settings["path/mirror/owner"]
 	group = settings["path/mirror/group"]
