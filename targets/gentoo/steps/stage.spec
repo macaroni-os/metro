@@ -137,24 +137,12 @@ rm -rf $[path/chroot/stage]$[portage/ROOT]/var/tmp/*
 
 postrun: [
 #!/bin/bash
-if [ "$[target]" != "stage1" ] && [ -e /usr/bin/ccache ]
-then
-	emerge -C dev-util/ccache || exit 1
-fi
-
 emerge -C $[emerge/packages/clean:zap] || exit 2
-
-# systemd compatible os-release file
-cat <<EOF > /etc/os-release
-ID="funtoo"
-NAME="Funtoo GNU/Linux"
-PRETTY_NAME="Linux"
-VERSION="$[target/version:zap]"
-VERSION_ID="$[target/subarch:zap]-$[target/version:zap]"
-ANSI_COLOR="0;34"
-HOME_URL="www.funtoo.org"
-BUG_REPORT_URL="bugs.funtoo.org"
-EOF
+if [ -e /etc/os-release ]; then
+	VER_SHORT="$[target/release]
+	VER_SHORT="${REL_SHORT%-release}-$[target/version]"
+	sed -i -e '/VERSION=/d' -e '/VERSION_ID=/d' -e "\$aVERSION=$[target/release]-$[target/version]" -e "\$aVERSION_ID=$VER_SHORT" /etc/os-release
+fi
 
 # motd
 echo "Creating motd..."

@@ -114,7 +114,7 @@ any trailing whitespace that may be on the line. You can also define
 single-line elements that have values that consist of multiple
 whitespace-separated values::
 
-  options: ccache replace
+  options: replace
 
 Sometimes, you need to define an element but leave it blank. To do this, don't
 specify any values after the colon::
