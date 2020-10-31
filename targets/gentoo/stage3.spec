@@ -19,7 +19,7 @@ fi
 
 emerge $eopts -u1 portage || exit 1
 emerge $eopts -u1 --nodeps ego || exit 1
-export USE="$[portage/USE] bindist"
+export USE="$[portage/USE]"
 # handle perl upgrades
 perl-cleaner --modules || exit 1
 emerge $eopts -e system || exit 1

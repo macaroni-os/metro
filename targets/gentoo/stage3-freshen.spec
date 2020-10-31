@@ -9,7 +9,7 @@ chroot/run: [
 $[[steps/setup]]
 locale-gen
 #emerge --oneshot $eopts portage || exit 1
-export USE="$[portage/USE] bindist"
+export USE="$[portage/USE]"
 emerge $eopts --deep --newuse -u @world 
 if [ $? -ne 0 ]; then
 	# maybe we did a perl upgrade, and we need to fix-up perl modules that are currently broken and causing perl

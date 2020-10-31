@@ -139,9 +139,9 @@ postrun: [
 #!/bin/bash
 emerge -C $[emerge/packages/clean:zap] || exit 2
 if [ -e /etc/os-release ]; then
-	VER_SHORT="$[target/release]
+	VER_SHORT="$[target/build]"
 	VER_SHORT="${REL_SHORT%-release}-$[target/version]"
-	sed -i -e '/VERSION=/d' -e '/VERSION_ID=/d' -e "\$aVERSION=$[target/release]-$[target/version]" -e "\$aVERSION_ID=$VER_SHORT" /etc/os-release
+	sed -i -e '/VERSION=/d' -e '/VERSION_ID=/d' -e "\$aVERSION=$[target/build]-$[target/version]" -e "\$aVERSION_ID=$VER_SHORT" /etc/os-release
 fi
 
 # motd

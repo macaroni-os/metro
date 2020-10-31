@@ -64,7 +64,7 @@ bootstrap.py: [
 #!/usr/bin/python
 import portage,sys
 pkgdict={}
-alloweduse=["nls", "bindist", "nptl", "nptlonly", "multilib", "userlocales" ]
+alloweduse=["nls", "nptl", "nptlonly", "multilib", "userlocales" ]
 alloweduse_startswith = ["userland_"]
 
 use=portage.settings["USE"].split()
