@@ -137,7 +137,7 @@ rm -rf $[path/chroot/stage]$[portage/ROOT]/var/tmp/*
 
 postrun: [
 #!/bin/bash
-emerge -C $[emerge/packages/clean:zap] || exit 2
+emerge -C $[emerge/packages/clean:zap] || echo "Seems all unmerged"
 if [ -e /etc/os-release ]; then
 	VER_SHORT="$[target/build]"
 	VER_SHORT="${REL_SHORT%-release}-$[target/version]"
