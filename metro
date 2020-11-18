@@ -199,10 +199,12 @@ class Metro:
 		# (in buildrepo) if all of these targets built, or not.
 		if not os.path.exists(initial_settings["path/mirror/target/path"]):
 			create_mirror_path(initial_settings, initial_settings["path/mirror/target/path"])
-		with open(initial_settings["path/mirror/target/path"] + "/.targets", "w") as targfile:
+		targ_path = initial_settings["path/mirror/target/path"] + "/.targets"
+		with open(targ_path, "w") as targfile:
 			for target in targetlist:
 				if target != "snapshot":
 					targfile.write(target + "\n")
+		shutil.chown(targ_path, user=settings["path/mirror/owner"], group=settings["path/mirror/group"])
 
 		current_target = None
 		user_abort = False
@@ -332,6 +334,7 @@ class Metro:
 			sf = open(status_fn,"w")
 			sf.write("fail")
 			sf.close()
+			shutil.chown(status_fn, user=settings["path/mirror/owner"], group=settings["path/mirror/group"])
 			if error and not user_abort:
 				# don't run failure QA hook if user aborted it.
 				self.qa_hook(initial_settings)
@@ -343,6 +346,7 @@ class Metro:
 			sf = open(status_fn,"w")
 			sf.write("ok")
 			sf.close()
+			shutil.chown(status_fn, user=settings["path/mirror/owner"], group=settings["path/mirror/group"])
 			self.qa_hook(initial_settings)
 		if abort or error:
 			sys.exit(1)
