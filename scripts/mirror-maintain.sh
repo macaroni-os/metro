@@ -28,7 +28,7 @@ $buildrepo digestgen
 echo "Regenerating symlinks"
 for subdir in $(cd $mp && ls -d */*/*/20* | cut -f1-3 -d/ | sort -u); do
 	latest=$(ls -d $mp/$subdir/20* | sort | tail -n 1)
-	for xzfile in $(ls $latest/*.tar.xz); do
+	for xzfile in $(ls $latest/*.tar.xz 2>/dev/null); do
 		basexzfile=$(basename $xzfile)
 		prefix="${basexzfile%%-*}"
 		echo $xzfile $prefix
