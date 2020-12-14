@@ -26,7 +26,7 @@ chroot/run: [
 $[[steps/setup]]
 epro mix-in gnome || exit 1
 if [ "$[target/arch_desc]" == "x86-64bit" ]; then
-	epro mix-in gfxcard-nvidia gfxcard-amdgpu gfxcard-radeon || exit 1
+	epro mix-in gfxcard-nvidia gfxcard-amdgpu gfxcard-radeon gfxcard-vmware || exit 1
 	case "$[target/subarch]" in
 		intel64-skylake|intel64-broadwell)
 			epro mix-in gfxcard-intel-iris || exit 2
