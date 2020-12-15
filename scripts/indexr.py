@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import os, stat
+import os, stat, sys
 from datetime import datetime
 file_width = 67 
 file_post_space = 3
@@ -60,7 +60,7 @@ def do_index(cur_path, dirnames, filenames, path_offset = "/"):
         of.write("</pre><hr>")
         of.write("</body></html>")
 
-ix_path = "/home/mirror/funtoo"
+ix_path = sys.argv[1]
 
 for path, dirnames, filenames in os.walk(ix_path):
     if os.path.basename(path).startswith("."):
