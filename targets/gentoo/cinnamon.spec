@@ -2,6 +2,6 @@
 
 [section desktop]
 
-mix-in: gnome
-packages: gnome
+mix-in: cinnamon
+packages: cinnamon sddm
 
