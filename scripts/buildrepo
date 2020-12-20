@@ -364,11 +364,17 @@ for release in all_builds:
 						# didn't work? Use old date on purpose to force cleaning:
 						bdir.date = datetime.datetime(1980,1,1)
 						bdir.date_str = "1980-01-01"
-					artifacts["stage3"] = find_file_compressed_or_not("%s/stage3*.tar*" % ipath)
-					artifacts["openvz"] = find_file_compressed_or_not("%s/funtoo-*-openvz-*.tar*" % ipath)
-					artifacts["lxd"] = find_file_compressed_or_not("%s/lxd-*.tar*" % ipath)
-					artifacts["gnome"] = find_file_compressed_or_not("%s/gnome-*.tar*" % ipath)
-
+					targets_file = os.path.join(ipath, "targets")
+					if not os.path.exists(targets):
+						continue
+					with open(targets_file, "r") as tf:
+						for target in tf.readlines():
+							if target in [ "stage3", "stage3-freshen"]:
+								artifacts["stage3"] = find_file_compressed_or_not("%s/stage3*.tar*" % ipath)
+							else:
+								# This should find any targets we build, such as lxd, cinnamon, gnome, as
+								# well as future ones we add:
+								artifacts[target] = find_file_compressed_or_not(f"{ipath}/{target}-*.tar*" % ipath)
 					bdir.path = ipath
 					bdir.release = release
 					bdir.arch = arch
@@ -658,8 +664,7 @@ elif sys.argv[1] == "prefetch":
 					out = out.filter_by(subarch_name=subarch).filter_by(complete=True).order_by(db.BuildDir.date_str).all()
 					if len(out):
 						for artifact in session.query(db.Artifact).filter_by(build_dir_id=out[-1].id):
-							if artifact.flavor in [ "gnome", "stage3" ]:
-								thang.append(("url[]",artifact.path[len(mirr_path):]))
+							thang.append(("url[]",artifact.path[len(mirr_path):]))
 	print(urllib.parse.urlencode(thang))
 	http_client = tornado.httpclient.HTTPClient()
 	headers = {
