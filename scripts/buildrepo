@@ -9,6 +9,7 @@ import fnmatch
 import pwd, grp
 import json
 import subprocess
+import socket
 from subprocess import call
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -30,97 +31,16 @@ from metro_support import LockFile, CountFile, CommandRunner, MetroSetup
 
 builds = ( )
 arches = ( )
-subarches = ( )
 index_ignore_builds = ()
 index_ignore_subarches = ()
 # these variables, if defined, are used for repo management (cleaning, etc.):
 
-all_builds = ( )
-all_arches = ( )
-all_subarches = ( )
 stale_days = 3
 max_failcount = 3
 keep_num = 2
 
-def map_build(build, subarch, full, full_date):
+def map_build(build, arch_desc, subarch, full, full_date):
 	return "full"
-cfgfile = os.path.join(os.path.expanduser("~"),".buildbot")
-if os.path.exists(cfgfile):
-	exec(open(cfgfile, "rb").read())
-else:
-	print("""
-Create a ~/.buildbot file that contains something like this (python syntax):
-
-builds = (
-"funtoo-experimental",
-"funtoo-current",
-"funtoo-current-hardened",
-)
-
-arches = (
-"x86-32bit",
-"x86-64bit",
-"sparc-64bit",
-"pure64"
-)
-
-# all subarches that are built here:
-subarches = ( 
-"atom_32",
-"atom_64",
-"corei7",
-"corei7-pure64",
-"generic_32", 
-"i686", 
-"athlon-xp",
-"pentium4",
-"core2_32",
-"amd64-k8_32",
-"amd64-k8",
-"amd64-k10",
-"core2_64",
-"generic_64",
-"generic_64-pure64",
-)
-
-# optional - how many days old it takes for a stage build to be considered "stale":
-# default = 3
-stale_days = 3
-
-# optional - how many consecutive failed builds of a subarch before it is pulled from
-# build rotation. default = 3
-max_failcount = 3
-
-# optional - number of builds to keep, default = 3
-keep_num = 3
-
-# optional - all subarches that are built + uploaded here:
-all_subarches = subarches + (
-"amd64-piledriver",
-"amd64-steamroller"
-)
-
-# optional:
-def map_build(build, subarch, full, full_date):
-# arguments refer to last build...
-if full == True:
-	buildtype = "freshen"
-else:
-	buildtype = "full"
-if subarch in [ "corei7", "corei7-pure64", "generic_64",  "generic_64-pure64" ]:
-	buildtype = buildtype + "+openvz"
-return buildtype
-""")
-	sys.exit(1)
-
-if len(all_builds) == 0:
-	all_builds = builds
-
-if len(all_subarches) == 0:
-	all_subarches = subarches
-
-if len(all_arches) == 0:
-	all_arches = arches
 
 class Database(object):
 	poolclass = NullPool
@@ -273,6 +193,61 @@ setup = MetroSetup()
 settings = setup.get_settings()
 initial_path = settings["path/mirror"]
 
+cfgfile = os.path.join(initial_path,".buildbot")
+if os.path.exists(cfgfile):
+	exec(open(cfgfile, "rb").read())
+else:
+	print(f"""
+Create a {initial_path}/.buildbot file that contains something like this (python syntax):
+
+builds = (
+"funtoo-experimental",
+"funtoo-current",
+"funtoo-current-hardened",
+)
+
+arches = (
+"x86-32bit",
+"x86-64bit",
+"sparc-64bit",
+"pure64"
+)
+
+# optional - how many days old it takes for a stage build to be considered "stale":
+# default = 3
+stale_days = 3
+
+# optional - how many consecutive failed builds of a subarch before it is pulled from
+# build rotation. default = 3
+max_failcount = 3
+
+# optional - number of builds to keep, default = 3
+keep_num = 3
+
+# all subarches handled by metro (including other systems)
+all_subarches = subarches + (
+"amd64-piledriver",
+"amd64-steamroller"
+)
+
+# optional:
+def map_build(build, arch_desc, subarch, full, full_date):
+# arguments refer to last build...
+if full == True:
+	buildtype = "freshen"
+else:
+	buildtype = "full"
+if subarch in [ "corei7", "corei7-pure64", "generic_64",  "generic_64-pure64" ]:
+	buildtype = buildtype + "+openvz"
+return buildtype
+""")
+	sys.exit(1)
+
+try:
+	subarches
+except NameError:
+	subarches = get_host_subarches(socket.gethostname())
+
 def find_file_compressed_or_not(glob_pattern):
 	found_match = None
 	for match in glob.glob(glob_pattern):
@@ -282,10 +257,51 @@ def find_file_compressed_or_not(glob_pattern):
 				break
 	return found_match
 
+now = datetime.datetime.now()
+
+
+def find_build(q, min_age=stale_days, max_age=None):
+	for x in q:
+		if min_age is not None:
+			if x.full_date is not None and now - x.full_date < datetime.timedelta(days=min_age):
+				continue
+		if max_age is not None:
+			if x.full_date is None:
+				continue
+			elif now - x.full_date > datetime.timedelta(days=max_age):
+				continue
+		# skip it if it is currently being built....
+		tsfilepath = x.path+"/.control/.multi_progress"
+		if os.path.exists(tsfilepath):
+			tsfile = LockFile(tsfilepath)
+			# ensure lockFile is not stale. The exists() method will clean it up automatically if it is:
+			if tsfile.exists():
+				sys.stderr.write("# Build at %s in progress, skipping...\n" % x.path)
+				continue
+		# output: build subarch was-last-build-full(had-a-stage-1)(boolean) date
+		# TODO: this has changed to RELEASE, and buildbot needs to be updated to understand it.
+		print("release=%s" % x.release)
+		print("arch_desc=%s" % x.arch)
+		print("subarch=%s" % x.subarch)
+		print("fulldate=%s" % x.full_date_str)
+		print("nextdate=%s" % datetime.datetime.strftime(datetime.datetime.now(), "%Y-%m-%d"))
+		print("failcount=%s" % x.failcount)
+		mb = map_build(x.release, x.arch, x.subarch, x.full_date == x.date and x.date != None, x.full_date_str)
+		# handle case where map_build returns "full+openvz":
+		if type(mb) == str:
+			mb = mb.split("+")
+		# handle case where map_build returns ("full", "openvz"):
+		print("target=%s" % mb[0])
+		if len(mb) > 1:
+			print("extras='%s'" % "+".join(mb[1:]))
+		else:
+			print("extras=''")
+		sys.exit(0)
+
 if os.path.exists("cleaner.db"):
 	os.unlink("cleaner.db")
 db = MetroRepositoryDatabase()
-for release in all_builds:
+for release in builds:
 	if not os.path.exists("%s/%s" % (initial_path, release)):
 		continue
 	snapdir = "%s/%s/snapshots" % ( initial_path, release )
@@ -301,11 +317,11 @@ for release in all_builds:
 				session.add(sna)
 				session.commit()
 	with db.get_session() as session:
-		for arch in all_arches:
+		for arch in arches:
 			funky_path = "%s/%s/%s" % ( initial_path, release, arch )
 			if not os.path.exists(funky_path):
 				continue
-			for subarch in all_subarches:
+			for subarch in subarches:
 				path = "%s/%s/%s/%s" % (initial_path, release, arch, subarch)
 				if not os.path.exists(path):
 					continue
@@ -432,54 +448,12 @@ for release in all_builds:
 
 			session.commit()
 
-now = datetime.datetime.now()
-
-
-def find_build(q, min_age=stale_days, max_age=None):
-	for x in q:
-		if min_age is not None:
-			if x.full_date is not None and now - x.full_date < datetime.timedelta(days=min_age):
-				continue
-		if max_age is not None:
-			if x.full_date is None:
-				continue
-			elif now - x.full_date > datetime.timedelta(days=max_age):
-				continue
-		# skip it if it is currently being built....
-		tsfilepath = x.path+"/.control/.multi_progress"
-		if os.path.exists(tsfilepath):
-			tsfile = LockFile(tsfilepath)
-			# ensure lockFile is not stale. The exists() method will clean it up automatically if it is:
-			if tsfile.exists():
-				sys.stderr.write("# Build at %s in progress, skipping...\n" % x.path)
-				continue
-		# output: build subarch was-last-build-full(had-a-stage-1)(boolean) date
-		# TODO: this has changed to RELEASE, and buildbot needs to be updated to understand it.
-		print("release=%s" % x.release)
-		print("arch_desc=%s" % x.arch)
-		print("subarch=%s" % x.subarch)
-		print("fulldate=%s" % x.full_date_str)
-		print("nextdate=%s" % datetime.datetime.strftime(datetime.datetime.now(), "%Y-%m-%d"))
-		print("failcount=%s" % x.failcount)
-		mb = map_build(x.release, x.subarch, x.full_date == x.date and x.date != None, x.full_date_str)
-		# handle case where map_build returns "full+openvz":
-		if type(mb) == str:
-			mb = mb.split("+")
-		# handle case where map_build returns ("full", "openvz"):
-		print("target=%s" % mb[0])
-		if len(mb) > 1:
-			print("extras='%s'" % "+".join(mb[1:]))
-		else:
-			print("extras=''")
-		sys.exit(0)
-
-
 if sys.argv[1] == "clean":
 	with db.get_session() as session:
-		for release in all_builds:
+		for release in builds:
 			# first -- remove any more than keep_num complete builds, starting with oldest, of course:
-			for arch in all_arches:
-				for subarch in all_subarches:
+			for arch in arches:
+				for subarch in subarches:
 					out = session.query(db.BuildDir).filter_by(release=release).filter_by(arch=arch)
 					out = out.filter_by(subarch_name=subarch).filter_by(complete=True).order_by(db.BuildDir.date_str).all()
 					kept = 0
@@ -660,9 +634,9 @@ elif sys.argv[1] == "prefetch":
 		("cdn_id", cdn_id)
 	]
 	with db.get_session() as session:
-		for release in all_builds:
+		for release in builds:
 			# first -- remove any more than keep_num complete builds, starting with oldest, of course:
-			for arch in all_arches:
+			for arch in arches:
 				for subarch in all_subarches:
 					out = session.query(db.BuildDir).filter_by(release=release).filter_by(arch=arch)
 					out = out.filter_by(subarch_name=subarch).filter_by(complete=True).order_by(db.BuildDir.date_str).all()
