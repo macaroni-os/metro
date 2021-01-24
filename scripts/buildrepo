@@ -74,7 +74,7 @@ class Database(object):
 		pass
 
 	def __init__(self, **kwargs):
-		self.engine = create_engine("sqlite:///cleaner.db", poolclass=self.poolclass, pool_recycle=self.pool_recycle, echo=self.echo)
+		self.engine = create_engine("sqlite:////var/tmp/cleaner.db", poolclass=self.poolclass, pool_recycle=self.pool_recycle, echo=self.echo)
 		self.Base = declarative_base(bind=self.engine)
 		self.session_factory = sessionmaker(bind=self.engine, autoflush=self.autoflush)
 		self.Session = scoped_session(self.session_factory)
