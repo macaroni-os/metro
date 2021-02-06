@@ -47,7 +47,7 @@ elif [ "$[target/arch_desc]" == "x86-32bit" ]; then
 fi
 epro flavor desktop || exit 2
 emerge $eopts -uDN @world || exit 3
-emerge $eopts $[desktop/packages] metalog vim linux-firmware nss-mdns xorg-x11 $extra_pkgs || exit 4
+emerge $eopts $[desktop/packages] metalog vim linux-firmware sof-firmware nss-mdns xorg-x11 $extra_pkgs || exit 4
 if [ -d /tmp/fsroot ]; then
 	echo "Syncing custom config over myself..."
 	rsync -av /tmp/fsroot/ / || exit 1
