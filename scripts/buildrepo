@@ -298,8 +298,8 @@ def find_build(q, min_age=stale_days, max_age=None):
 			print("extras=''")
 		sys.exit(0)
 
-if os.path.exists("cleaner.db"):
-	os.unlink("cleaner.db")
+if os.path.exists("/var/tmp/cleaner.db"):
+	os.unlink("/var/tmp/cleaner.db")
 db = MetroRepositoryDatabase()
 for release in builds:
 	if not os.path.exists("%s/%s" % (initial_path, release)):
