@@ -3,5 +3,5 @@
 [section desktop]
 
 mix-in: gnome
-packages: gnome sddm
+packages: gnome
 
