@@ -6,13 +6,20 @@ file_width = 67
 file_post_space = 3
 
 def do_line(of, f, url_f, sz, mtime, path_offset = "/"):
+    is_dir = False
     if sz is None:
+        is_dir = True
         # dir
         sz = "-"
         f = f + "/"
     else:
         sz = str(sz)
-    url_f = os.path.join(path_offset, url_f)
+    url_f = "https://build.funtoo.org" + os.path.join(path_offset, url_f)
+    if is_dir:
+        # This avoids a weird issue where "1.4-release-std" will redirect to cdn-pull.funtoo.org, which
+        # will bump people off the CDN! Whereas adding a "/" will get them to the index without the 
+        # extra redirect, and should keep them on the CDN.
+        url_f += "/"
     if len(f) > file_width:
         fout = f[:file_width - 3] + "..."
         pad = 0
