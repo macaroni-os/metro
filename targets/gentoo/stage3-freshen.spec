@@ -10,6 +10,8 @@ $[[steps/setup]]
 locale-gen
 #emerge --oneshot $eopts portage || exit 1
 export USE="$[portage/USE]"
+emerge $eopts --deep --newuse -1 -u sys-libs/glibc
+emerge $eopts --deep -1 --usepkg=n =sys-libs/db-18*
 emerge $eopts --deep --newuse -u @world 
 if [ $? -ne 0 ]; then
 	# maybe we did a perl upgrade, and we need to fix-up perl modules that are currently broken and causing perl
