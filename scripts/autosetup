@@ -445,7 +445,7 @@ def createMetroConf(user_metro_conf):
 
 if __name__ == "__main__":
 	
-	releases = ["funtoo-current", "funtoo-current-hardened", "1.3-release-std", "1.3-release-ec2", "1.2-release-ec2"]
+	releases = ["1.4-release-std"]
 
 	# 1. Check for "~/.metro". We need to create it if it doesn't exist
 	user_conf = Path(os.path.expanduser("~/.metro"))
