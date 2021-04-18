@@ -10,7 +10,7 @@ if [ -z "$mp" ]; then
 else
 	echo "Mirroring $mp..."
 fi
-EXTRA_EXCLUDES="--exclude=selinux* --exclude=*2019-* --exclude=*2020-01* --exclude=*2020-02* --delete-excluded"
+EXTRA_EXCLUDES="--exclude=selinux* --exclude=*2019-* --exclude=*2020-* --delete-excluded"
 EXCLUDES="--exclude *.cme --exclude *.cme.run --exclude *.progress --exclude stage1*.tar* --exclude stage2*.tar* --exclude *.tar"
 $mp/../metro/scripts/buildrepo index.xml
 $mp/../metro/scripts/indexr.py $mp
