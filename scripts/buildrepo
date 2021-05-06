@@ -453,7 +453,7 @@ if sys.argv[1] == "clean":
 		for release in builds:
 			# first -- remove any more than keep_num complete builds, starting with oldest, of course:
 			for arch in arches:
-				for subarch in subarches:
+				for subarch in all_subarches:
 					out = session.query(db.BuildDir).filter_by(release=release).filter_by(arch=arch)
 					out = out.filter_by(subarch_name=subarch).filter_by(complete=True).order_by(db.BuildDir.date_str).all()
 					kept = 0
