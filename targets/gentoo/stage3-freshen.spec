@@ -10,9 +10,10 @@ $[[steps/setup]]
 locale-gen
 #emerge --oneshot $eopts portage || exit 1
 export USE="$[portage/USE]"
-emerge $eopts --deep --newuse -1 -u sys-libs/glibc
-emerge $eopts --deep -1 --usepkg=n =sys-libs/db-18*
-emerge $eopts --deep --newuse -u @world 
+# This won't work because some things need rebuilding after glibc upgrade.
+#emerge $eopts --deep --newuse -1 -u sys-libs/glibc || exit 93
+emerge $eopts --deep --newuse -u @world  || exit 95
+emerge $eopts --deep -1 --usepkg=n =sys-libs/db-18* || exit 94
 # hack: remove stale binutils when freshening.
 emerge -C '<sys-devel/binutils-2.36'
 if [ $? -ne 0 ]; then

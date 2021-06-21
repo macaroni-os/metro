@@ -1,7 +1,5 @@
 #!/bin/bash --login
 
-# This is designed to be a simple 1:1 mirror for a release. This script WILL DELETE any files on the mirror that do not exist on the host!
-#CUSTOM_EXCLUDE="--exclude *2020-02-03*"
 metro="$(dirname $0)/../metro"
 mp=$($metro -k path/mirror 2>/dev/null)
 if [ -z "$mp" ]; then
