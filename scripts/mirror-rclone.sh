@@ -1,7 +1,5 @@
 #!/bin/bash --login
 
-# This is designed to be a simple 1:1 mirror for a release. This script WILL DELETE any files on the mirror that do not exist on the host!
-#CUSTOM_EXCLUDE="--exclude *2020-02-03*"
 metro="$(dirname $0)/../metro"
 mp=$($metro -k path/mirror 2>/dev/null)
 if [ -z "$mp" ]; then
@@ -10,7 +8,7 @@ if [ -z "$mp" ]; then
 else
 	echo "Mirroring $mp..."
 fi
-EXTRA_EXCLUDES="--exclude=selinux* --exclude=*2019-* --exclude=*2020-01* --exclude=*2020-02* --delete-excluded"
+EXTRA_EXCLUDES="--exclude=selinux* --exclude=*2019-* --exclude=*2020-* --delete-excluded"
 EXCLUDES="--exclude *.cme --exclude *.cme.run --exclude *.progress --exclude stage1*.tar* --exclude stage2*.tar* --exclude *.tar"
 $mp/../metro/scripts/buildrepo index.xml
 $mp/../metro/scripts/indexr.py $mp

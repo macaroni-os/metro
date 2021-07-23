@@ -152,6 +152,9 @@ if [ $? -ne 0 ]; then
 	export ROOT="$[portage/ROOT]"
 fi
 emerge $eopts --noreplace --oneshot ${buildpkgs} || exit 1
+export CHOST="$(portageq envvar CHOST 2>/dev/null)"
+gcc-config 1 || die "problems setting up gcc environment."
+
 
 install -d ${ROOT}/{proc,sys,dev}
 ego profile mix-in -stage1 || die

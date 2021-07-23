@@ -453,7 +453,7 @@ if sys.argv[1] == "clean":
 		for release in builds:
 			# first -- remove any more than keep_num complete builds, starting with oldest, of course:
 			for arch in arches:
-				for subarch in subarches:
+				for subarch in all_subarches:
 					out = session.query(db.BuildDir).filter_by(release=release).filter_by(arch=arch)
 					out = out.filter_by(subarch_name=subarch).filter_by(complete=True).order_by(db.BuildDir.date_str).all()
 					kept = 0
@@ -490,9 +490,9 @@ elif sys.argv[1] == "nextbuild":
 			find_build(empties)
 			# next, we look for builds with a failcount of "myfail+1", but haven't been built in at least stale_days * 2. 
 			# This prevents them from being pushed out of the build rotation if we aren't building *every* stale stage (if we always have some builds queued at any given time.)
-			if myfail + 1 < max_failcount:
-				baddies = sa.filter(db.SubArch.do_build == True).filter(db.SubArch.release.in_(builds)).filter_by(failcount=myfail+1).order_by(db.SubArch.date)
-				find_build(baddies,min_age=stale_days*2)
+			# if myfail + 1 < max_failcount:
+			#	baddies = sa.filter(db.SubArch.do_build == True).filter(db.SubArch.release.in_(builds)).filter_by(failcount=myfail+1).order_by(db.SubArch.date)
+			#	find_build(baddies,min_age=stale_days*2)
 			# if we can't find one, we look for a failcount of zero, but prioritize by date:
 			oldies = sa.filter(db.SubArch.do_build == True).filter(db.SubArch.date != None).filter(db.SubArch.release.in_(builds)).filter_by(failcount=myfail).order_by(db.SubArch.date)
 			find_build(oldies)
