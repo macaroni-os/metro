@@ -14,7 +14,7 @@ fsroot_loc=$[path/install]/etc/builds/$[target/build]/$[target]/fsroot
 if [ -d "$fsroot_loc" ]; then
 	install -d "$[path/chroot]/tmp/fsroot" || exit 8
 	# we will need to sync this to the root filesystem after we're done merging...
-	rsync -av -no-o -no-g "${fsroot_loc}/" "$[path/chroot]/tmp/fsroot" || exit 9
+	rsync -av --no-owner --no-group "${fsroot_loc}/" "$[path/chroot]/tmp/fsroot" || exit 9
 fi
 if [ -e "${fsroot_loc}.mtree" ]; then
 	cp "${fsroot_loc}.mtree" "$[path/chroot]/tmp/" || exit 10
