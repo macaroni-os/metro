@@ -24,6 +24,7 @@ fi
 chroot/run: [
 #!/bin/bash
 $[[steps/setup]]
+epro flavor desktop || exit 2
 epro mix-in $[desktop/mix-in] || exit 1
 extra_pkgs=""
 extra_initd=""
@@ -45,7 +46,6 @@ if [ "$[target/arch_desc]" == "x86-64bit" ]; then
 elif [ "$[target/arch_desc]" == "x86-32bit" ]; then
 	epro mix-in gfxcard-intel || exit 1
 fi
-epro flavor desktop || exit 2
 emerge $eopts -uDN @world || exit 3
 emerge $eopts $[desktop/packages] metalog vim linux-firmware sof-firmware nss-mdns xorg-x11 $extra_pkgs || exit 4
 if [ -e /etc/init.d/elogind ]; then
@@ -58,4 +58,5 @@ fi
 for svc in NetworkManager avahi-daemon bluetooth metalog xdm $extra_initd; do
 	rc-update add $svc default
 done
+glib-compile-schemas /usr/share/glib-2.0/schemas/
 ]
