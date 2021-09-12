@@ -12,7 +12,7 @@ EXTRA_EXCLUDES="--exclude=selinux* --exclude=*2019-* --delete-excluded"
 EXCLUDES="--exclude *.cme --exclude *.cme.run --exclude *.progress --exclude stage1*.tar* --exclude stage2*.tar* --exclude *.tar"
 $mp/../metro/scripts/buildrepo index.xml
 $mp/../metro/scripts/indexr.py $mp
-rclone -Pl $EXCLUDES $EXTRA_EXCLUDES --b2-chunk-size=36M --b2-upload-cutoff=36M --transfers=18 --checkers=24 sync $mp b2:funtoo-mirror
+rclone -Pl $EXCLUDES $EXTRA_EXCLUDES --b2-chunk-size=36M --b2-upload-cutoff=36M --transfers=3 --checkers=24 sync $mp b2:funtoo-mirror
 rclone cleanup b2:funtoo-mirror
 if [ "$1" == "half" ]; then
 	echo "Only performing first half of mirroring operation."
