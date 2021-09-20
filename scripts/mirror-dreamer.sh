@@ -3,6 +3,9 @@
 # rather than pulling from rclone. Once this is done, you should run scripts/mirror-backwards-rclone.sh to get
 # our b2 backup in sync with what is on the server (we normally PULL from the b2 backup so it expects to be the
 # "master".
+#
+# This script should be run directly from the 'ports' container when /mnt/data-removable is mounted on dreamer,
+# as either the root or drobbins user.
 metro="$(dirname $0)/../metro"
 ip=$($metro -k path/install 2>/dev/null)
 [ $? -ne 0 ] && echo "Get install path failed." && exit 1
