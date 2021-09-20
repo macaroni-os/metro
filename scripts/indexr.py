@@ -42,6 +42,8 @@ def do_index(cur_path, dirnames, filenames, path_offset = "/"):
         for f in filenames:
             if f in hidden or f.startswith("."):
                 continue
+            if f.startswith("stage1") or f.startswith("stage2"):
+                continue
             real_path = os.path.join(cur_path, f)
             try:
                 st = os.stat(real_path)
