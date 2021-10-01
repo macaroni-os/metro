@@ -3,5 +3,5 @@
 [section desktop]
 
 mix-in: cinnamon
-packages: cinnamon sddm
+packages: cinnamon gdm
 
