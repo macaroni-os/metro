@@ -48,6 +48,8 @@ elif [ "$[target/arch_desc]" == "x86-32bit" ]; then
 fi
 emerge $eopts -uDN @world || exit 3
 emerge $eopts $[desktop/packages] metalog vim linux-firmware sof-firmware nss-mdns xorg-x11 $extra_pkgs || exit 4
+emerge $eopts @preserved-rebuild -uDN -1 --backtrack=6 || exit 5
+
 if [ -e /etc/init.d/elogind ]; then
 	rc-update add elogind boot
 fi
