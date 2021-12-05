@@ -35,6 +35,10 @@ for subdir in $(cd $mp && ls -d */*/*/20* | cut -f1-3 -d/ | sort -u); do
 		link=$(dirname $latest)/$prefix-latest.tar.xz
 		linkdest=$(basename $latest)/$(basename $xzfile)
 		echo Creating $link "->" $linkdest
+		rm -f $link; rm -f $link.gpg
 		ln -s $linkdest $link
+		if [ -e ${linkdest}.gpg ]; then
+			ln -s ${link}.gpg ${linkdest}.gpg
+		fi
 	done
 done
