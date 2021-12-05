@@ -32,13 +32,25 @@ for subdir in $(cd $mp && ls -d */*/*/20* | cut -f1-3 -d/ | sort -u); do
 		basexzfile=$(basename $xzfile)
 		prefix="${basexzfile%%-*}"
 		echo $xzfile $prefix
+		# The link to create, abs path:
 		link=$(dirname $latest)/$prefix-latest.tar.xz
+		# The link destination, "2021-11-13/stage3-2021-11-13.tar.xz"
 		linkdest=$(basename $latest)/$(basename $xzfile)
+		# The absolute path to the link destination (used for GPG links)
+		linkdestabs=$(dirname $latest)/$linkdest
 		echo Creating $link "->" $linkdest
 		rm -f $link; rm -f $link.gpg
 		ln -s $linkdest $link
-		if [ -e ${linkdest}.gpg ]; then
-			ln -s ${link}.gpg ${linkdest}.gpg
+		if [ -e ${linkdestabs}.gpg ]; then
+			ln -s ${linkdest}.gpg ${link}.gpg
+			echo Creating GPG ${link}.gpg "->" ${linkdest}.gpg
+		else
+			echo GPG signature ${linkdestabs}.gpg does NOT exist
 		fi
 	done
 done
+echo "Fixing permissions"
+cd $mp
+chown -R drobbins:drobbins $mp
+find $mp -type f -exec chmod 0644 {} \;
+find $mp -type d -exec chmod 755 {} \;
