@@ -29,7 +29,7 @@ epro mix-in $[desktop/mix-in] || exit 1
 extra_pkgs=""
 extra_initd=""
 if [ "$[target/arch_desc]" == "x86-64bit" ]; then
-	epro mix-in gfxcard-nvidia gfxcard-amdgpu gfxcard-radeon gfxcard-vmware || exit 1
+	epro mix-in gfxcard-kvm gfxcard-nvidia gfxcard-amdgpu gfxcard-radeon gfxcard-vmware || exit 1
 	extra_pkgs="open-vm-tools"
 	extra_initd="vmware-tools"
 	case "$[target/subarch]" in
