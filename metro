@@ -234,8 +234,11 @@ class Metro:
 
 			if settings["release/type"] == "official":
 				rawtar = targ[:targ.find(".tar")] + ".tar"
-				if os.path.exists(targ) or os.path.exists(rawtar):
-					cr.mesg("Target already exists - skipping...")
+				tarfound = None
+				if os.path.exists(targ):
+					tarfound = targ
+				if tarfound:
+					cr.mesg(f"Target {tarfound} already exists - skipping...")
 					target.run_script("trigger/ok/run", optional=True)
 					continue
 			else:
