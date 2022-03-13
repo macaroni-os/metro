@@ -46,7 +46,7 @@ eselect python cleanup
 # run perl-cleaner to ensure all modules rebuilt after a major
 # perl update, fix FL-122
 perl-cleaner --all -- $eopts || exit 1
-emerge $eopts @preserved-rebuild -uDN -1 --backtrack=6 || exit 3
+emerge $eopts @preserved-rebuild || exit 3
 ]
 
 [section portage]
