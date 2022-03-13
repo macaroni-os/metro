@@ -54,7 +54,11 @@ class BaseTarget:
 			os.makedirs(outdir)
 
 		with open(outfile, "w") as outfd:
-			outfd.write("\n".join(self.settings[key]) + "\n")
+			outlines = list(self.settings[key])
+			if not chroot and "EGO_SYNC_BASE_URL" in os.environ:
+				if outlines[0] == "#!/bin/bash":
+					outlines.insert(1, f'export EGO_SYNC_BASE_URL={os.environ["EGO_SYNC_BASE_URL"]}')
+			outfd.write("\n".join(outlines) + "\n")
 
 		os.chmod(outfile, 0o755)
 

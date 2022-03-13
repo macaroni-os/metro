@@ -12,6 +12,6 @@ cat >> $ego_out_dir/ego.conf << EOF
 sync_base_url = ${EGO_SYNC_BASE_URL}
 EOF
 fi
-export EGO_CONF=$ego_out_dir/ego.conf
+export EGO_CONFIG=$ego_out_dir/ego.conf
 ]
 
