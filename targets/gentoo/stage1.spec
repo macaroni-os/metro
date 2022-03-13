@@ -104,7 +104,7 @@ emerge $eopts @preserved-rebuild || die
 # so now, we have upgraded stuff, and have the right libs installed that things going to /tmp/stage1root
 # will link to... and can proceed.
 
-/var/tmp/ego/ego sync --no-meta
+/var/tmp/ego/ego sync --in-place
 
 cat > /tmp/build.py << "EOF"
 $[[files/pythonjunk]]
