@@ -5,6 +5,9 @@
 
 setup: [
 #!/bin/bash
+# env-update uses python, which can fail if libgcc_s.so.1 isn't in search path. So we have to
+# manually run ldconfig.
+ldconfig
 # env-update before ego sync, to ensure libs are in order:
 /usr/sbin/env-update
 # This should switch to most recent compiler:
@@ -16,6 +19,7 @@ else
 fi
 gcc-config $gcc_num || exit 97
 # run env-update again, as gcc-config may have changed compiler, requiring this:
+ldconfig
 /usr/sbin/env-update
 source /etc/profile
 /var/tmp/ego/ego sync --in-place
