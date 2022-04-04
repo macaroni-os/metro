@@ -5,7 +5,7 @@
 
 setup: [
 #!/bin/bash
-/var/tmp/ego/ego sync --in-place
+# env-update before ego sync, to ensure libs are in order:
 /usr/sbin/env-update
 # This should switch to most recent compiler:
 gcc_num=$(gcc-config -l | grep \\[ | wc -l)
@@ -15,7 +15,10 @@ else
 	gcc_num=1
 fi
 gcc-config $gcc_num || exit 97
+# run env-update again, as gcc-config may have changed compiler, requiring this:
+/usr/sbin/env-update
 source /etc/profile
+/var/tmp/ego/ego sync --in-place
 export MAKEOPTS="$[portage/MAKEOPTS:zap]"
 export FEATURES="$[portage/FEATURES:zap]"
 export EMERGE_WARNING_DELAY=0
