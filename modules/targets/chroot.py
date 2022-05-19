@@ -1,12 +1,15 @@
 #!/usr/bin/python3
 
-import os, sys
-import time
-from metro_support import MetroError, ismount
+import os
 import subprocess
+import time
+from shutil import which
+
+from metro_support import MetroError, ismount
+from qemu_support import native_support
 
 from .base import BaseTarget
-from qemu_support import native_support, qemu_arch_settings
+
 
 class ChrootTarget(BaseTarget):
 	def __init__(self, settings, cr):
@@ -55,9 +58,9 @@ class ChrootTarget(BaseTarget):
 				host_arch = self.settings["host/arch_desc"]
 			else:
 				uname_arch = os.uname()[4]
-				if uname_arch in [ "x86_64", "AMD64" ]:
+				if uname_arch in ["x86_64", "AMD64"]:
 					host_arch = "x86-64bit"
-				elif uname_arch in [ "x86", "i686", "i386"]:
+				elif uname_arch in ["x86", "i686", "i386"]:
 					host_arch = "x86-32bit"
 				else:
 					raise MetroError("Unrecognized host architecture. Please set host/arch to x86-64bit, arm-32bit, etc. in ~/.metro.")
@@ -66,25 +69,9 @@ class ChrootTarget(BaseTarget):
 				raise MetroError("Arch specified in host/arch_desc \"%s\" not supported." % host_arch)
 			target_arch = self.settings["target/arch_desc"]
 
-			self.franken_chroot = False
-
-			if host_arch != target_arch:
-				if target_arch not in native_support[host_arch]:
-					self.franken_chroot = True
-
-			# FRANKEN-CHROOT SETUP
-
-			found_chroot_bin = None
-
-			if self.franken_chroot:
-				for fchroot_bin in [ "/root/fchroot/bin/fchroot-simple", "/usr/bin/fchroot-simple" ]:
-					if os.path.exists(fchroot_bin):
-						found_chroot_bin = self.cmds["chroot"] = fchroot_bin
-						break
-				if found_chroot_bin is None:
-					raise MetroError("Please install fchroot to /usr/bin or clone fchroot git repo to /root for non-native binary support.")
-
-			# END FRANKEN-CHROOT SETUP
+			fchroot_bin = which("fchroot")
+			if fchroot_bin is None:
+				raise MetroError("Please install fchroot and ensure it is in your path.")
 
 			self.bind()
 
@@ -142,12 +129,6 @@ class ChrootTarget(BaseTarget):
 
 	def bind(self):
 		""" Perform bind mounts """
-		self.cr.mesg("Mounting /sys in chroot...")
-		os.system(self.cmds["mount"]+" --rbind /sys %s/sys" % self.settings["path/work"])
-		self.cr.mesg("Mounting /proc in chroot...")
-		os.system(self.cmds["mount"]+" none -t proc %s/proc" % self.settings["path/work"])
-		self.cr.mesg("Mounting /dev in chroot...")
-		os.system(self.cmds["mount"]+" --rbind /dev %s/dev" % self.settings["path/work"])
 		for dst, src in list(self.mounts.items()):
 			if not os.path.exists(src):
 				os.makedirs(src, 0o755)
@@ -160,44 +141,8 @@ class ChrootTarget(BaseTarget):
 			if os.system(self.cmds["mount"]+" -R "+src+" "+wdst) != 0:
 				self.unbind()
 				raise MetroError("Couldn't bind mount "+src)
-		self.mounts["/proc"] = "/proc"
-
-	def unbind(self, attempt=0):
-		mounts = [ "foo" ]
-		no_progress = 0
-		while len(mounts) != 0:
-			mounts = self.get_active_mounts()
-			# now, go through our dictionary and try to unmount
-			progress = 0
-			mpos = 0
-			while mpos < len(mounts):
-				time.sleep(0.2)
-				self.cmd("umount -Rl "+mounts[mpos], badval=10)
-				if not ismount(mounts[mpos]):
-					del mounts[mpos]
-					progress += 1
-				else:
-					mpos += 1
-			if progress == 0:
-				no_progress += 1
-			if no_progress >= 5:
-				break
 
 		mounts = self.get_active_mounts()
-		if len(mounts):
-			if attempt >= 20:
-				mstring = ""
-				for mount in mounts:
-					mstring += mount+"\n"
-					print("Couldn't unmount: %s" % mount)
-					if os.path.exists("/usr/bin/lsof"):
-						subprocess.call("/usr/bin/lsof | grep %s" % mount, shell=True)
-					print()
-				raise MetroError("The following bind mounts could not be unmounted: \n"+mstring)
-			else:
-				attempt += 1
-				self.kill_chroot_pids()
-				self.unbind(attempt=attempt)
 
 	def get_active_mounts(self):
 		# os.path.realpath should ensure that we are comparing the right thing,
