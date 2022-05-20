@@ -43,7 +43,8 @@ class BaseTarget:
 		if root_path is None:
 			root_path = self.settings["path/work"]
 		for p in psutil.disk_partitions():
-			if os.path.commonpath(p.mountpoint, root_path) >= len(root_path):
+			common = os.path.commonpath([p.mountpoint, root_path])
+			if len(common) >= len(root_path):
 				raise MetroError(f"Path {p.mountpoint} is still mounted. Refusing to continue for safety.")
 
 	def run(self):
