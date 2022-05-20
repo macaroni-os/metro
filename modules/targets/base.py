@@ -50,15 +50,15 @@ class BaseTarget:
 			raise MetroError("run_script: key '%s' not found." % (key,))
 
 		if type(self.settings[key]) != list:
-			raise MetroError("run_script: key '%s' is not a multi-line element." % (key, ))
+			raise MetroError("run_script: key '%s' is not a multi-line element." % (key,))
 
 		self.cr.mesg("run_script: running %s..." % key)
 
 		if chroot:
-			chrootfile = "/tmp/"+key+".metro"
-			outfile = chroot+chrootfile
+			chrootfile = "/tmp/" + key + ".metro"
+			outfile = chroot + chrootfile
 		else:
-			outfile = self.settings["path/tmp"]+"/pid/"+repr(os.getpid())
+			outfile = self.settings["path/tmp"] + "/pid/" + repr(os.getpid())
 
 		outdir = os.path.dirname(outfile)
 		if not os.path.exists(outdir):
@@ -81,6 +81,9 @@ class BaseTarget:
 			else:
 				for dest, src in self.mounts.items():
 					cmds.append(f"--bind={src}:{dest}")
+					# fchroot expects bind-mount destination to exist:
+					dest_path = os.path.join(chroot, dest.lstrip("/"))
+					os.makedirs(dest_path, exist_ok=True)
 			cmds.append(chroot)
 			cmds.append(chrootfile)
 		else:
@@ -104,7 +107,7 @@ class BaseTarget:
 				loc_no_ending = None
 				found = False
 				# look for uncompressed version of file:
-				for ending in [ ".tar.xz", ".tar.gz", "tar.bz2" ]:
+				for ending in [".tar.xz", ".tar.gz", "tar.bz2"]:
 					if self.settings[loc].endswith(ending):
 						zap_part = "." + ending.split(".")[-1]
 						# remove .gz, .xz extension:
@@ -116,7 +119,7 @@ class BaseTarget:
 						print("Found uncompressed file: %s" % loc_no_ending)
 						found = True
 				if not found:
-					raise MetroError("Required file "+self.settings[loc]+" not found. Aborting.")
+					raise MetroError("Required file " + self.settings[loc] + " not found. Aborting.")
 			elif len(matches) > 1:
 				raise MetroError("Multiple matches found for required file pattern defined in '%s'; Aborting." % loc)
 
@@ -125,18 +128,18 @@ class BaseTarget:
 			path = self.settings["path/work"]
 		if os.path.exists(path):
 			print("Cleaning up %s..." % path)
-		self.cmd(self.cmds["rm"]+" -rf "+path)
+		self.cmd(self.cmds["rm"] + " -rf " + path)
 		if recreate:
 			# This line ensures that the root /var/tmp/metro path has proper 0700 perms:
-			self.cmd(self.cmds["install"]+" -d -m 0700 -g root -o root " + self.settings["path/tmp"])
+			self.cmd(self.cmds["install"] + " -d -m 0700 -g root -o root " + self.settings["path/tmp"])
 			# This creates the directory we want.
-			self.cmd(self.cmds["install"]+" -d -m 0700 -g root -o root "+path)
-			# The 0700 perms prevent Metro-generated /tmp directories from being abused by others -
-			# because they are world-writeable, they could be used by malicious local users to
-			# inject arbitrary data/executables into a Metro build.
+			self.cmd(self.cmds["install"] + " -d -m 0700 -g root -o root " + path)
+		# The 0700 perms prevent Metro-generated /tmp directories from being abused by others -
+		# because they are world-writeable, they could be used by malicious local users to
+		# inject arbitrary data/executables into a Metro build.
 
 	def cmd(self, mycmd, myexc="", badval=None):
-		self.cr.mesg("Executing \""+mycmd+"\"...")
+		self.cr.mesg("Executing \"" + mycmd + "\"...")
 		try:
 			sys.stdout.flush()
 			retval = self.cr.run(mycmd.split(), self.env)
