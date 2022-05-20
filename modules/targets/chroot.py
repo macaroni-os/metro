@@ -32,12 +32,6 @@ class ChrootTarget(BaseTarget):
 					self.cr.mesg("Enabling cache: %s" % key)
 					self.mounts[dst] = self.settings[key]
 
-	def abort_if_bind_mounts(self):
-		for path in ["proc", "sys", "dev"] + list(self.mounts.keys()):
-			abs_path = os.path.join(self.settings["path/work"], path.lstrip("/"))
-			if os.path.ismount(abs_path):
-				raise MetroError(f"Path {abs_path} is still mounted. Refusing to continue for safety.")
-
 	def run(self):
 		self.check_required_files()
 		self.abort_if_bind_mounts()
