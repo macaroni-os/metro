@@ -21,7 +21,6 @@ class BaseTarget:
 		self.settings = settings
 		# new CommandRunner (logger) object:
 		self.cr = cr
-
 		# preserve only TERM from environment:
 		self.env = {}
 		if "TERM" in os.environ:
@@ -35,15 +34,16 @@ class BaseTarget:
 		else:
 			self.cmds["fchroot"] = fchroot_bin
 
-	def abort_if_bind_mounts(self):
+	def abort_if_bind_mounts(self, root_path=None):
+		if root_path is None:
+			root_path = self.settings["path/work"]
 		for path in ["proc", "sys", "dev"] + list(self.mounts.keys()):
-			abs_path = os.path.join(self.settings["path/work"], path.lstrip("/"))
+			abs_path = os.path.join(root_path, path.lstrip("/"))
 			if os.path.ismount(abs_path):
 				raise MetroError(f"Path {abs_path} is still mounted. Refusing to continue for safety.")
 
 	def run(self):
 		self.check_required_files()
-		self.abort_if_bind_mounts()
 		self.clean_path(recreate=True)
 		self.run_script("steps/run")
 		self.clean_path()
@@ -132,8 +132,9 @@ class BaseTarget:
 		if path == None:
 			path = self.settings["path/work"]
 		if os.path.exists(path):
+			self.abort_if_bind_mounts(path)
 			print("Cleaning up %s..." % path)
-		self.cmd(self.cmds["rm"] + " -rf " + path)
+			self.cmd(self.cmds["rm"] + " -rf " + path)
 		if recreate:
 			# This line ensures that the root /var/tmp/metro path has proper 0700 perms:
 			self.cmd(self.cmds["install"] + " -d -m 0700 -g root -o root " + self.settings["path/tmp"])
