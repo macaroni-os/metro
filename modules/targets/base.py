@@ -1,9 +1,12 @@
 import os, sys, types
 from glob import glob
+from shutil import which
 
 from metro_support import MetroError
 
+
 class BaseTarget:
+	mounts = {}
 	cmds = {
 		"bash": "/bin/bash",
 		"chroot": "/usr/bin/chroot",
@@ -20,11 +23,12 @@ class BaseTarget:
 		self.cr = cr
 		self.env = {}
 		self.env["PATH"] = "/bin:/sbin:/usr/bin:/usr/sbin"
-		if "TERM" in os.environ:
-			self.env["TERM"] = os.environ["TERM"]
 		self.required_files = []
-		if not os.path.exists("/usr/bin/chroot"):
-			self.cmds["chroot"] = "/usr/sbin/chroot"
+		fchroot_bin = which("fchroot")
+		if fchroot_bin is None:
+			raise MetroError("Please install fchroot and ensure it is in your path.")
+		else:
+			self.cmds["fchroot"] = fchroot_bin
 
 	def run(self):
 		self.check_required_files()
@@ -32,7 +36,7 @@ class BaseTarget:
 		self.run_script("steps/run")
 		self.clean_path()
 
-	def run_script(self, key, chroot=None, optional=False, error_scan=False):
+	def run_script(self, key, chroot=None, optional=False, error_scan=False, nobind=False):
 		if key not in self.settings:
 			if optional:
 				return
@@ -64,9 +68,12 @@ class BaseTarget:
 
 		cmds = []
 		if chroot:
-			if self.settings["target/arch_desc"] == "x86-32bit" and os.uname()[4] == "x86_64":
-				cmds.append(self.cmds["linux32"])
-			cmds.append(self.cmds["chroot"])
+			cmds.append(self.cmds["fchroot"])
+			if nobind:
+				cmds.append("--nobind")
+			else:
+				for dest, src in self.mounts.items():
+					cmds.append(f"--bind={src}:{dest}")
 			cmds.append(chroot)
 			cmds.append(chrootfile)
 		else:
