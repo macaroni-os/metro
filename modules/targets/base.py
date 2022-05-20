@@ -27,9 +27,12 @@ class BaseTarget:
 		self.env = {}
 		if "TERM" in os.environ:
 			self.env["TERM"] = os.environ["TERM"]
-
-		self.env["PATH"] = "/bin:/sbin:/usr/bin:/usr/sbin"
+		if "PATH" in os.environ:
+			self.env["PATH"] = os.environ["PATH"]
+		else:
+			self.env["PATH"] = "/bin:/sbin:/usr/bin:/usr/sbin"
 		self.required_files = []
+		print("PATH is", self.env["PATH"])
 		fchroot_bin = which("fchroot")
 		if fchroot_bin is None:
 			raise MetroError("Please install fchroot and ensure it is in your path.")
