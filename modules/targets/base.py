@@ -32,12 +32,6 @@ class BaseTarget:
 		else:
 			self.env["PATH"] = "/bin:/sbin:/usr/bin:/usr/sbin"
 		self.required_files = []
-		print("PATH is", self.env["PATH"])
-		fchroot_bin = which("fchroot")
-		if fchroot_bin is None:
-			raise MetroError("Please install fchroot and ensure it is in your path.")
-		else:
-			self.cmds["fchroot"] = fchroot_bin
 
 	def abort_if_bind_mounts(self, root_path=None):
 		if root_path is None:
@@ -85,6 +79,12 @@ class BaseTarget:
 
 		cmds = []
 		if chroot:
+			if "fchroot" not in self.cmds:
+				fchroot_bin = which("fchroot")
+				if fchroot_bin is None:
+					raise MetroError("Please install fchroot and ensure it is in your path.")
+				else:
+					self.cmds["fchroot"] = fchroot_bin
 			cmds.append(self.cmds["fchroot"])
 			if nobind:
 				cmds.append("--nobind")
