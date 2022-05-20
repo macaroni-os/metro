@@ -21,7 +21,12 @@ class BaseTarget:
 		self.settings = settings
 		# new CommandRunner (logger) object:
 		self.cr = cr
+
+		# preserve only TERM from environment:
 		self.env = {}
+		if "TERM" in os.environ:
+			self.env["TERM"] = os.environ["TERM"]
+
 		self.env["PATH"] = "/bin:/sbin:/usr/bin:/usr/sbin"
 		self.required_files = []
 		fchroot_bin = which("fchroot")
