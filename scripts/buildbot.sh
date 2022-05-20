@@ -1,5 +1,4 @@
 #!/bin/bash
-source /etc/profile
 #preserve group permissions:
 umask 002
 SCRIPT_DIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
