@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# If we are running from fcron, we'll have a clean environment and thus won't
-# have proxy settings. So let's make sure we have a good Gentoo environment...
-
-source /etc/profile
 SCRIPT_DIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 cd $SCRIPT_DIR
 die() {
