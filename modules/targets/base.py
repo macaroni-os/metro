@@ -2,6 +2,8 @@ import os, sys, types
 from glob import glob
 from shutil import which
 
+import psutil
+
 from metro_support import MetroError
 
 
@@ -37,10 +39,9 @@ class BaseTarget:
 	def abort_if_bind_mounts(self, root_path=None):
 		if root_path is None:
 			root_path = self.settings["path/work"]
-		for path in ["proc", "sys", "dev"] + list(self.mounts.keys()):
-			abs_path = os.path.join(root_path, path.lstrip("/"))
-			if os.path.ismount(abs_path):
-				raise MetroError(f"Path {abs_path} is still mounted. Refusing to continue for safety.")
+		for p in psutil.disk_partitions():
+			if os.path.commonpath(p.mountpoint, root_path) >= len(root_path):
+				raise MetroError(f"Path {p.mountpoint} is still mounted. Refusing to continue for safety.")
 
 	def run(self):
 		self.check_required_files()
