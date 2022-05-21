@@ -3,6 +3,16 @@
 
 #[option parse/lax]
 
+linux_fix: [
+# try to fix broken /usr/src/linux symlink, if it exists:
+if [ -L /usr/src/linux ] && [ ! -e /usr/src/linux ]; then
+	rm /usr/src/linux
+	top_link="$(cd /usr/src; ls -d linux-debian-sources* | cut -f1 )"
+	( cd /usr/src; ln -s $top_link linux )
+fi
+]
+
+
 setup: [
 #!/bin/bash
 # env-update uses python, which can fail if libgcc_s.so.1 isn't in search path. So we have to
@@ -20,6 +30,7 @@ fi
 gcc-config $gcc_num || exit 97
 # run env-update again, as gcc-config may have changed compiler, requiring this:
 ldconfig
+$[[steps/linux_fix]]
 /usr/sbin/env-update
 source /etc/profile
 /var/tmp/ego/ego sync --in-place
@@ -145,6 +156,7 @@ rm -rf $[path/chroot/stage]$[portage/ROOT]/var/tmp/*
 postrun: [
 #!/bin/bash
 emerge -C $[emerge/packages/clean:zap] || echo "Seems all unmerged"
+$[[steps/linux_fix]]
 if [ -e /etc/os-release ]; then
 	sed -i -e '/VERSION=/d' -e '/VERSION_ID=/d' -e "\$aVERSION=$[target/build]-$[target/version]" -e "\$aVERSION_ID=$[target/version]" /etc/os-release
 fi
