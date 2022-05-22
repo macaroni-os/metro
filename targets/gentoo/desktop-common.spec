@@ -30,7 +30,7 @@ extra_pkgs=""
 extra_initd=""
 if [ "$[target/arch_desc]" == "x86-64bit" ]; then
 	epro mix-in gfxcard-kvm gfxcard-nvidia gfxcard-amdgpu gfxcard-radeon gfxcard-vmware || exit 1
-	extra_pkgs="open-vm-tools"
+	extra_pkgs="linux-firmware sof-firmware open-vm-tools"
 	extra_initd="vmware-tools"
 	case "$[target/subarch]" in
 		intel64-skylake|intel64-broadwell)
@@ -44,10 +44,16 @@ if [ "$[target/arch_desc]" == "x86-64bit" ]; then
 		emerge $eopts $pkg || exit 4
 	done
 elif [ "$[target/arch_desc]" == "x86-32bit" ]; then
+	extra_pkgs="linux-firmware sof-firmware"
 	epro mix-in gfxcard-intel || exit 1
+elif [ "$[target/arch_desc]"] == "arm-64bit" ]; then
+	if [ "$[target/subarch]" == "raspi4" ]; then
+		extra_pkgs="raspberrypi-image raspberrypi-wifi-ucode raspberrypi-firmware raspberrypi-userland"
+		epro mix-in gfxcard-raspi4 || exit 2
+	fi
 fi
 emerge $eopts -uDN @world || exit 3
-emerge $eopts $[desktop/packages] metalog vim linux-firmware sof-firmware nss-mdns xorg-x11 $extra_pkgs || exit 4
+emerge $eopts -uDN $[desktop/packages] metalog vim nss-mdns xorg-x11 $extra_pkgs || exit 4
 emerge $eopts @preserved-rebuild -uDN -1 --backtrack=6 || exit 5
 
 if [ -e /etc/init.d/elogind ]; then
