@@ -91,7 +91,8 @@ class BaseTarget:
 			else:
 				for dest, src in self.mounts.items():
 					cmds.append(f"--bind={src}:{dest}")
-					# fchroot expects bind-mount destination to exist:
+					# fchroot expects bind-mount source and destination to exist:
+					os.makedirs(src, exist_ok=True, mode=0o755)
 					dest_path = os.path.join(chroot, dest.lstrip("/"))
 					os.makedirs(dest_path, exist_ok=True)
 			cmds.append(chroot)
