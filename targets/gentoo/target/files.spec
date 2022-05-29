@@ -22,16 +22,6 @@ en_US.UTF-8 UTF-8
 C.UTF-8 UTF-8
 ]
 
-proxyenv: [
-<?python
-for x in ["http_proxy","ftp_proxy","RSYNC_PROXY"]:
-	if x in os.environ:
-		print(x+"=\""+os.environ[x]+"\"")
-	else:
-		print("# "+x+" is not set")
-?>
-]
-
 motd: [
 $[[files/motd/extra:lax]]
 

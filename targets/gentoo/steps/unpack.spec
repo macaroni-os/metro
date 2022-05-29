@@ -129,9 +129,6 @@ $[[steps/ego/prep]]
 
 env: [
 install -d $[path/chroot]/etc/portage
-cat << "EOF" > $[path/chroot]/etc/env.d/99zzmetro || exit 6
-$[[files/proxyenv]]
-EOF
 cat << "EOF" > $[path/chroot]/etc/locale.gen || exit 7
 $[[files/locale.gen]]
 EOF

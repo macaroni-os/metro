@@ -189,11 +189,13 @@ fi
 if [ "${ROOT}" = "/" ]
 then
 	# remove our tweaked configuration files, restore originals.
-	for f in /etc/profile.env /etc/csh.env /etc/env.d/99zzmetro
+	for f in /etc/profile.env /etc/csh.env
 	do
 		echo "Cleaning chroot: $f..."
 		rm -f "$f" || exit 1
 	done
+	# now regenerate /etc/profile.env, csh.env:
+	/usr/sbin/env-update || exit 1
 	for f in /etc/resolv.conf /etc/hosts
 	do
 		[ -e "$f" ] && rm -f "$f"
