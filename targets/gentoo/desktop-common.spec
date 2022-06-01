@@ -50,6 +50,9 @@ elif [ "$[target/arch_desc]"] == "arm-64bit" ]; then
 	if [ "$[target/subarch]" == "raspi4" ]; then
 		extra_pkgs="raspberrypi-image raspberrypi-wifi-ucode raspberrypi-firmware raspberrypi-userland"
 		epro mix-in gfxcard-raspi4 || exit 2
+		rc-update del hwclock default || exit 4
+		rc-update add swclock default || exit 4
+		extra_initd="busybox-ntpd"
 	fi
 fi
 emerge $eopts -uDN @world || exit 3
