@@ -532,8 +532,10 @@ elif sys.argv[1] == "index.xml":
 	with db.get_session() as session:
 		numfails = 0
 		for subarch in session.query(db.SubArch).filter(db.SubArch.release.notin_(index_ignore_builds)):
-			subarch_xml = etree.Element("subarch")
-			subarch_xml.attrib["name"] = subarch.subarch
+			if subarch.subarch not in subarch_builds:
+				subarch_xml = etree.Element("subarch")
+				subarch_xml.attrib["name"] = subarch.subarch
+				subarch_builds[subarch.subarch] = subarch_xml
 			count: int = 1
 			info_json_path: str = None
 			if subarch.latest_full_build is None:
@@ -551,17 +553,21 @@ elif sys.argv[1] == "index.xml":
 					bifn = os.path.join(subarch.path, artifact.date_str, "build-info.json")
 					if os.path.exists(bifn):
 						info_json_path = bifn
+				subarch_builds[subarch.subarch].append(build_xml)
 				subarch_xml.append(build_xml)
 				count += 1
-			subarch_xml.attrib["builds"] = ",".join(map(str, range(1, count)))
+			subarch_builds[subarch.subarch].attrib["builds"] = ",".join(map(str, range(1, count)))
 
 			# We found extracted CFLAGS, etc from most recent build -- grab this info and add it to our XML:
 			if info_json_path:
-				with open(info_json_path,"r") as bif:
+				with open(info_json_path, "r") as bif:
 					bif_json = json.loads(bif.read())
 					for x in bif_json:
-						subarch_xml.attrib[x] = bif_json[x]
-			outxml.append(subarch_xml)
+						subarch_builds[subarch.subarch].attrib[x] = bif_json[x]
+
+	for subarch, subarch_xml in subarch_builds.items():
+		outxml.append(subarch_xml)
+
 	outf = open(os.path.join(initial_path, "index.xml"), "wb")
 	outf.write(etree.tostring(outxml, encoding="UTF-8", pretty_print=True, xml_declaration=True))
 elif sys.argv[1] == "zap":
