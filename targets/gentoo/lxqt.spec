@@ -3,5 +3,5 @@
 [section desktop]
 
 mix-in: gnome
-packages: lxqt-meta
+packages: lxqt-meta gdm
 

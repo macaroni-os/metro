@@ -557,7 +557,7 @@ elif sys.argv[1] == "index.xml":
 					for x in bif_json:
 						outxml.attrib[x] = bif_json[x]
 
-			outxml.attrib["builds"] = ",".join(map(str, range(1, 4)))
+			outxml.attrib["builds"] = ",".join(map(str, range(1, count)))
 			outf = open(os.path.join(subarch.path, "index.xml"), "wb")
 			outf.write(etree.tostring(outxml, encoding="UTF-8", pretty_print=True, xml_declaration=True))
 
