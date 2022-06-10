@@ -140,6 +140,22 @@ fi
 export PKGDIR=$ORIG_PKGDIR/new_root
 install -d ${ROOT}
 
+# This is necessary to do prior to baselayout, as it does not create
+# /bin, /usr/bin, or the /lib(64) directories:
+#
+# work around an issue where split-usr is being unset.
+export USE="split-usr"
+install -m 0755 -d $ROOT/usr/bin
+install -m 0755 -d $ROOT/bin
+arch_desc="$[target_arch_desc]"
+if [ "${arch_desc/64-bit//}" != "${arch_desc}" ]; then
+	install -m 0755 -d $ROOT/lib64
+	ln -sf lib64 $ROOT/lib
+else
+	install -m 0755 -d $ROOT/lib
+fi
+
+
 # It's important to merge baselayout first so it can set perms on key dirs
 emerge $eopts --nodeps baselayout || exit 1
 
