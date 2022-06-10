@@ -148,7 +148,7 @@ export USE="split-usr"
 install -m 0755 -d $ROOT/usr/bin
 install -m 0755 -d $ROOT/bin
 arch_desc="$[target_arch_desc]"
-if [ "${arch_desc/64-bit//}" != "${arch_desc}" ]; then
+if [ "${arch_desc/-64bit//}" != "${arch_desc}" ]; then
 	install -m 0755 -d $ROOT/lib64
 	ln -sf lib64 $ROOT/lib
 else
