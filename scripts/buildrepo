@@ -130,6 +130,7 @@ class MetroRepositoryDatabase(Database):
 			arch = Column(String, index=True)
 			subarch = Column(String, index=True)
 			failcount = Column(Integer, index=True)
+			errors = Column(String)
 
 			do_build = Column(Boolean, index=True)
 
@@ -161,6 +162,7 @@ class MetroRepositoryDatabase(Database):
 			complete = Column(Boolean, index=True)  # complete currently means: stage3 exists.
 			full = Column(Boolean, index=True)  # full build means: stage 1, 2, 3
 			subarch = relationship(SubArch, backref=backref("build_dirs", order_by="BuildDir.date_str"), primaryjoin="SubArch.id == BuildDir.subarch_id")
+			errors = Column(String)
 
 		class Artifact(self.Base):
 			"""
@@ -326,6 +328,7 @@ for release in builds:
 				path = "%s/%s/%s/%s" % (initial_path, release, arch, subarch)
 				if not os.path.exists(path):
 					continue
+				most_recent_build_failed = None
 				most_recent_build = None
 				most_recent_complete_build = None
 				most_recent_complete_build_id = None
@@ -402,6 +405,10 @@ for release in builds:
 					bdir.subarch_name = subarch
 					bdir.complete = complete
 					bdir.subarch_id = sa.id
+					if os.path.exists(f"{ipath}/log/errors.json"):
+						with open(f"{ipath}/log/errors.json") as err:
+							err_json = json.loads(err.read())
+						bdir.errors = err_json[0]["ebuild"] + "/" + err_json[0]["phase"]
 
 					if complete:
 						for match in glob.glob("%s/stage1*.tar.*" % ipath):
@@ -422,7 +429,8 @@ for release in builds:
 						art.date_str = bdir.date_str
 						session.add(art)
 						session.flush()
-
+					if most_recent_build_failed is None or most_recent_build_failed.date < bdir.date:
+						most_recent_build_failed = bdir
 					if complete and (most_recent_build is None or most_recent_build.date < bdir.date):
 						most_recent_build = bdir
 						if bdir.complete:
@@ -438,6 +446,8 @@ for release in builds:
 				sa.full_date_str = most_recent_complete_build.date_str if most_recent_complete_build else None
 				sa.latest_full_build_id = most_recent_complete_build_id
 				sa.failcount = failcount
+				if failcount:
+					sa.errors = most_recent_build_failed.errors
 
 				# is subarch in our list of things to build, or just to maintain (ie. clean, for main repo)?
 				if release in builds and arch in arches and subarch in subarches:
@@ -518,7 +528,7 @@ elif sys.argv[1] == "fails":
 			# some stuff is not cached in the subarch db entry, so we need to grab the associated most recent build directory entry for the subarch:
 			bdir = x.latest_full_build
 			art_list = [art.flavor for art in bdir.artifacts] if bdir else []
-			print(str(x.failcount).rjust(4), "None".rjust(12) if not x.date else datetime.datetime.strftime(x.date, "%Y-%m-%d").rjust(12), x.path, "(%s)" % ",".join(art_list))
+			print(str(x.failcount).rjust(4), "None".rjust(12) if not x.date else datetime.datetime.strftime(x.date, "%Y-%m-%d").rjust(12), x.path, "(%s)" % ",".join(art_list), f"[{x.errors}]" if x.errors else "")
 elif sys.argv[1] == "index.xml":
 	from lxml import etree
 	with db.get_session() as session:
@@ -658,7 +668,11 @@ elif sys.argv[1] == "digestgen":
 	print("Generating hashes...")
 
 	for root, dirnames, filenames in os.walk(initial_path):
-		for filename in fnmatch.filter(filenames, '*.xz'):
+		for filename in filenames:
+			if filename.endswith((".xz", ".iso")):
+				pass
+			else:
+				continue
 			p = os.path.join(root, filename)
 			if os.path.islink(p):
 				continue
