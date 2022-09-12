@@ -446,7 +446,7 @@ for release in builds:
 				sa.full_date_str = most_recent_complete_build.date_str if most_recent_complete_build else None
 				sa.latest_full_build_id = most_recent_complete_build_id
 				sa.failcount = failcount
-				if failcount:
+				if failcount and most_recent_build_failed:
 					sa.errors = most_recent_build_failed.errors
 
 				# is subarch in our list of things to build, or just to maintain (ie. clean, for main repo)?

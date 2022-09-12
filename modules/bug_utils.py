@@ -49,6 +49,7 @@ class JIRA(object):
 		issue["fields"].update(extrafields)
 		print("Posting new bug.")
 		r = requests.post(url, data=json.dumps(issue), headers=headers)
+		print(r.status_code, r.text)
 		try:
 			j = r.json()
 		except ValueError:
