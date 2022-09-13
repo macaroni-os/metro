@@ -386,19 +386,18 @@ for release in builds:
 						bdir.date_str = "1980-01-01"
 					targets_file = os.path.join(ipath, ".targets")
 					if not os.path.exists(targets_file):
-						print("Doesn't exist:", targets_file)
 						continue
-					with open(targets_file, "r") as tf:
-						for target in tf.readlines():
-							target = target.strip()  # remove newline
-							if target in ["stage1", "stage2"]:
-								continue
-							elif target in ["stage3", "stage3-freshen"]:
-								artifacts["stage3"] = find_file_compressed_or_not(f"{ipath}/stage3*.tar*")
-							else:
-								# This should find any targets we build, such as lxd, cinnamon, gnome, as
-								# well as future ones we add:
-								artifacts[target] = find_file_compressed_or_not(f"{ipath}/{target}-*.tar*")
+						with open(targets_file, "r") as tf:
+							for target in tf.readlines():
+								target = target.strip()  # remove newline
+								if target in ["stage1", "stage2"]:
+									continue
+								elif target in ["stage3", "stage3-freshen"]:
+									artifacts["stage3"] = find_file_compressed_or_not(f"{ipath}/stage3*.tar*")
+								else:
+									# This should find any targets we build, such as lxd, cinnamon, gnome, as
+									# well as future ones we add:
+									artifacts[target] = find_file_compressed_or_not(f"{ipath}/{target}-*.tar*")
 					bdir.path = ipath
 					bdir.release = release
 					bdir.arch = arch
