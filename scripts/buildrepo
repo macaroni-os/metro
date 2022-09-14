@@ -25,7 +25,7 @@ import tornado.httpclient
 os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__))))
 sys.path.append("../modules")
 
-from metro_support import LockFile, CountFile, CommandRunner, MetroSetup
+from metro_support import LockFile, CountFile, CommandRunner, MetroSetup, StampFile
 
 # these variables are used for building:
 
@@ -160,6 +160,7 @@ class MetroRepositoryDatabase(Database):
 			subarch_name = Column(String, index=True)
 			date_str = Column(String, index=True)
 			complete = Column(Boolean, index=True)  # complete currently means: stage3 exists.
+			protected = Column(Boolean, default=False)  # stage3's referenced in version/stage3 will be protected from deletion, as will in-progress builds
 			full = Column(Boolean, index=True)  # full build means: stage 1, 2, 3
 			subarch = relationship(SubArch, backref=backref("build_dirs", order_by="BuildDir.date_str"), primaryjoin="SubArch.id == BuildDir.subarch_id")
 			errors = Column(String)
@@ -262,6 +263,16 @@ def find_file_compressed_or_not(glob_pattern):
 now = datetime.datetime.now()
 
 
+def path_in_progress(bdir_path):
+	tsfilepath = bdir_path + "/.control/.multi_progress"
+	if os.path.exists(tsfilepath):
+		tsfile = LockFile(tsfilepath)
+		# ensure lockFile is not stale. The exists() method will clean it up automatically if it is:
+		if tsfile.exists():
+			return True
+	return False
+
+
 def find_build(q, min_age=stale_days, max_age=None):
 	for x in q:
 		if min_age is not None:
@@ -272,14 +283,10 @@ def find_build(q, min_age=stale_days, max_age=None):
 				continue
 			elif now - x.full_date > datetime.timedelta(days=max_age):
 				continue
-		# skip it if it is currently being built....
-		tsfilepath = x.path + "/.control/.multi_progress"
-		if os.path.exists(tsfilepath):
-			tsfile = LockFile(tsfilepath)
-			# ensure lockFile is not stale. The exists() method will clean it up automatically if it is:
-			if tsfile.exists():
-				sys.stderr.write("# Build at %s in progress, skipping...\n" % x.path)
-				continue
+		if path_in_progress(x.path):
+			# skip it if it is currently being built....
+			sys.stderr.write("# Build at %s in progress, skipping...\n" % x.path)
+			continue
 		# output: build subarch was-last-build-full(had-a-stage-1)(boolean) date
 		# TODO: this has changed to RELEASE, and buildbot needs to be updated to understand it.
 		print("release=%s" % x.release)
@@ -339,6 +346,13 @@ for release in builds:
 				else:
 					fc = CountFile(failpath)
 					failcount = fc.count
+
+				# Protect the stage3 seed from deletion.
+
+				seed_version = None
+				stage3_version_path = path + "/.control/version/stage3"
+				if os.path.exists(stage3_version_path):
+					seed_version = StampFile(stage3_version_path)
 
 				# LET'S CREATE A SEMI-POPULATED SUBARCH. WE WILL FILL OUT DATE FIELDS LATER:
 
@@ -404,6 +418,11 @@ for release in builds:
 					bdir.subarch_name = subarch
 					bdir.complete = complete
 					bdir.subarch_id = sa.id
+					if seed_version and dirname == seed_version:
+						bdir.protected = True
+					elif path_in_progress(bdir.path):
+						# skip cleaning builds in progress --
+						bdir.protected = True
 					if os.path.exists(f"{ipath}/log/errors.json"):
 						with open(f"{ipath}/log/errors.json") as err:
 							err_json = json.loads(err.read())
@@ -464,17 +483,20 @@ if sys.argv[1] == "clean":
 			# first -- remove any more than keep_num complete builds, starting with oldest, of course:
 			for arch in arches:
 				for subarch in all_subarches:
-					out = session.query(db.BuildDir).filter_by(release=release).filter_by(arch=arch)
+					# protected=False means don't look at any protected directories -- we protect the current stage3 seed and build in progress...
+					out = session.query(db.BuildDir).filter_by(release=release).filter_by(arch=arch).filter_by(protected=False)
 					out = out.filter_by(subarch_name=subarch).filter_by(complete=True).order_by(db.BuildDir.date_str).all()
 					kept = 0
 					for x in out[0:-keep_num]:
-						print(("rm -rf %s" % x.path))
+						print(f"rm -rf {x.path}")
 						kept += 1
 					for x in out[-keep_num:]:
-						print(("# keeping %s" % x.path))
-					for incomp in session.query(db.BuildDir).filter_by(release=release).filter_by(arch=arch).filter_by(subarch_name=subarch).filter_by(complete=False).filter(
+						print(f"# keeping {x.path}")
+					for incomp in session.query(db.BuildDir).filter_by(release=release).filter_by(protected=False).filter_by(arch=arch).filter_by(subarch_name=subarch).filter_by(complete=False).filter(
 							db.BuildDir.date < (datetime.datetime.now() - datetime.timedelta(days=2)).strftime("%Y-%m-%d")):
 						print("rm -rf %s # incomplete and more than a day old" % incomp.path)
+					for bdir in session.query(db.BuildDir).filter_by(protected=True):
+						print(f"# protected {x.path}")
 			# next, remove any more than keep_num snapshots:
 			sna = session.query(db.Snapshot).filter_by(release=release).order_by(db.Snapshot.path).all()
 			for x in sna[0:-keep_num]:
