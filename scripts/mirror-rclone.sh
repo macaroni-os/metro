@@ -19,7 +19,7 @@ if [ "$1" == "half" ]; then
 	echo "This part is done."
 	exit 0
 fi
-ssh drobbins@cdn-pull.funtoo.org rclone sync -lP b2:funtoo-mirror/ /home/mirror/funtoo/
-ssh drobbins@cdn-pull.funtoo.org 'find /home/mirror/funtoo -type f -exec chmod 0644 {} \;'
-ssh drobbins@cdn-pull.funtoo.org 'find /home/mirror/funtoo -type d -exec chmod 0755 {} \;'
+ssh drobbins@direct-pull.funtoo.org rclone sync -lP b2:funtoo-mirror/ /home/mirror/funtoo/
+ssh drobbins@direct-pull.funtoo.org 'find /home/mirror/funtoo -type f -exec chmod 0644 {} \;'
+ssh drobbins@direct-pull.funtoo.org 'find /home/mirror/funtoo -type d -exec chmod 0755 {} \;'
 ssh root@www.funtoo.org /etc/init.d/memcached restart
