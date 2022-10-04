@@ -12,6 +12,17 @@ from lxml import html
 script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(script_dir, "../modules"))
 
+from metro_support import MetroSetup
+
+
+def create_file(path: Path, contents, echo=True):
+	if not path.parent.exists():
+		os.makedirs(path.parent, mode=770, exist_ok=True)
+	with open(path, mode='w', encoding="utf-8") as f:
+		f.write(contents)
+	if echo:
+		print(f"Created file {path} with contents '{contents}'")
+
 
 def sorted_list(func):
 	@wraps(func)
@@ -176,6 +187,8 @@ class FileSystemBuildSelector:
 
 	@sorted_list
 	def releases(self):
+		if not self.root.exists():
+			return
 		for dir in self.root.iterdir():
 			if not dir.is_dir():
 				continue
@@ -188,7 +201,10 @@ class FileSystemBuildSelector:
 
 	@sorted_list
 	def arches(self, release):
-		for dir in self.root.joinpath(release).iterdir():
+		rel_dir = self.root.joinpath(release)
+		if not rel_dir.exists():
+			return
+		for dir in rel_dir.iterdir():
 			if not dir.is_dir():
 				continue
 			elif dir.name == "snapshots":
@@ -197,14 +213,16 @@ class FileSystemBuildSelector:
 
 	@sorted_list
 	def subarches(self, release, arch):
-		for dir in self.root.joinpath(release, arch).iterdir():
+		sub_dir = self.root.joinpath(release, arch)
+		if not sub_dir.exists():
+			return
+		for dir in sub_dir.iterdir():
 			if not dir.is_dir():
 				continue
 			yield dir.name
 
 
 def user_select(screen, label, selector):
-
 	releases = selector.releases()
 	chooser = CursesChooser(releases, heading=f"{label} / funtoo")
 	chooser.display(screen)
@@ -223,11 +241,43 @@ def user_select(screen, label, selector):
 	return release, arch, subarch
 
 
-def main(screen):
-	selector = FileSystemBuildSelector("/funtoo/mirror/funtoo")
-	return user_select(screen, "filesystem", selector)
+def curses_main(screen):
+	try:
+		selector = LiveBuildSelector()
+		return user_select(screen, "www.funtoo.org", selector)
+	except ValueError:
+		print()
+
+
+def main():
+	try:
+		settings = MetroSetup().get_settings()
+		if "path/mirror" not in settings:
+			raise RuntimeError("path/mirror not defined")
+		elif not os.path.exists(settings["path/mirror"]):
+			raise RuntimeError(
+				f"{settings['path/mirror']} (path/mirror in ~/.metro) does not appear to exist. Please create it.")
+		else:
+			try:
+				test_file = Path(settings['path/mirror']).joinpath(".test_write")
+				create_file(test_file, "test", echo=False)
+				os.unlink(test_file)
+			except PermissionError:
+				raise RuntimeError(
+					f"Unable to write to {settings['path/mirror']}. Please run as root (preferred) or change permissions on this directory.")
+	except (RuntimeError, OSError) as e:
+		print(f"Exception: {e}")
+		print("""
+Please copy metro.conf to ~/.metro and customize path/install to point to the location where metro
+is installed, and path/mirror to where you want to store stages.		
+""")
+		sys.exit(1)
+	path_parts = curses.wrapper(curses_main)
+	sub_path = Path(settings['path/mirror']).joinpath(*path_parts)
+	print(sub_path)
+	c_path = sub_path.joinpath(".control")
+	create_file(c_path.joinpath("strategy", "build"), "stage3")
 
 
 if __name__ == "__main__":
-	foo = curses.wrapper(main)
-	print(foo)
+	main()
