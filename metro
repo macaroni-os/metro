@@ -37,10 +37,10 @@ def usage():
 def version():
 	print(" " + __app__, "version", __version__)
 	print()
-	print(" Copyright 2008-2021 Funtoo Solutions, Inc.")
+	print(" Copyright 2008-2023 Funtoo Solutions, Inc.")
 	print(" Maintainer:", __maintainer__)
 	print()
-	print(" Web: http://www.funtoo.org")
+	print(" Web: https://www.funtoo.org")
 	print(" Documentation: http://www.funtoo.org/Metro")
 	print()
 	print(__license__)

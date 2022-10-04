@@ -1,14 +1,13 @@
 Metro
 =====
 
-Metro is a somewhat complex set of shell and python scripts and various files
-used to build install and LiveCD media for Gentoo Linux and its derivatives
-(like Funtoo Linux).
+Metro is technology used used to build install and LiveCD media for Funtoo
+Linux.
 
-TL;DR:
+You can learn more about Metro and view additional documentation at the
+Metro project page:
 
-- `Quick Start Tutorial <http://www.funtoo.org/wiki/Metro_Quick_Start_Tutorial>`_
-- `Metro AutoSetup <https://www.funtoo.org/Metro_AutoSetup>`_
+- `Metro <https://www.funtoo.org/Funtoo:Metro>`_
 
 
 How Metro Works
