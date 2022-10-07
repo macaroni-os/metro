@@ -2,6 +2,7 @@
 
 import curses
 import os
+import re
 import sys
 from functools import wraps
 from pathlib import Path
@@ -179,6 +180,17 @@ class LiveBuildSelector:
 				continue
 			yield link.rstrip("/")
 
+	def latest_build(self, release, arch, subarch):
+		builds = []
+		for build in get_http_dirs(f"https://build.funtoo.org/{release}/{arch}/{subarch}"):
+			if not re.fullmatch(r"^\d{4}-\d{2}-\d{2}/$", build):
+				continue
+			builds.append(build)
+		if not len(builds):
+			return
+		else:
+			return sorted(builds)[-1].rstrip("/")
+
 
 class FileSystemBuildSelector:
 
@@ -241,9 +253,8 @@ def user_select(screen, label, selector):
 	return release, arch, subarch
 
 
-def curses_main(screen):
+def curses_main(screen, selector):
 	try:
-		selector = LiveBuildSelector()
 		return user_select(screen, "www.funtoo.org", selector)
 	except ValueError:
 		print()
@@ -252,13 +263,13 @@ def curses_main(screen):
 def main():
 	try:
 		if os.geteuid() != 0:
-			raise RuntimeError("Metro should be run as the root user.")
+			raise RuntimeError("Metro setup should be run as the root user.")
 		settings = MetroSetup().get_settings()
 		if "path/mirror" not in settings:
 			raise RuntimeError("path/mirror not defined")
 		elif not os.path.exists(settings["path/mirror"]):
 			raise RuntimeError(
-				f"{settings['path/mirror']} (path/mirror in ~/.metro) does not appear to exist. Please create it.\nExample can be found in git repo at /metro.conf.")
+				f"{settings['path/mirror']} (path/mirror in ~/.metro) does not appear to exist. Please create it.")
 		else:
 			try:
 				test_file = Path(settings['path/mirror']).joinpath(".test_write")
@@ -270,11 +281,20 @@ def main():
 	except (RuntimeError, OSError) as e:
 		print(f"Exception: {e}")
 		sys.exit(1)
-	path_parts = curses.wrapper(curses_main)
-	sub_path = Path(settings['path/mirror']).joinpath(*path_parts)
-	print(sub_path)
+	selector = LiveBuildSelector()
+	release, arch, subarch = curses.wrapper(curses_main, selector)
+	latest_build = selector.latest_build(release, arch, subarch)
+	sub_path = Path(settings['path/mirror']).joinpath(release, arch, subarch)
 	c_path = sub_path.joinpath(".control")
 	create_file(c_path.joinpath("strategy", "build"), "stage3")
+	create_file(c_path.joinpath("version", "stage3"), latest_build)
+	build_path = sub_path.joinpath(latest_build)
+	os.makedirs(build_path, exist_ok=True)
+	archive = f"stage3-{subarch}-{release}-{latest_build}.tar.xz"
+	out_path = build_path.joinpath(archive)
+	if out_path.exists():
+		raise RuntimeError(f"{out_path} appears to already exist. Please remove first.")
+	print(f"wget https://build.funtoo.org/{release}/{arch}/{subarch}/{latest_build}/{archive} -O {build_path}/{archive}")
 
 
 if __name__ == "__main__":
