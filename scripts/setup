@@ -6,6 +6,8 @@ import re
 import sys
 from functools import wraps
 from pathlib import Path
+from pwd import getpwnam
+from grp import getgrnam
 
 import requests
 from lxml import html
@@ -16,11 +18,35 @@ sys.path.append(os.path.join(script_dir, "../modules"))
 from metro_support import MetroSetup
 
 
-def create_file(path: Path, contents, echo=True):
-	if not path.parent.exists():
-		os.makedirs(path.parent, mode=770, exist_ok=True)
+def makedirs(path: Path, base: Path, owner=None, group=None, dirmode=None, exist_ok=True):
+	"""
+	This command is an enhanced os.makedirs() function.
+
+	It will create all missing directories inside base path ``base``. It is designed not to perform any
+	action outside ``base`` -- so ``base`` must exist. However, any directories inside ``base`` that
+	are missing and part of ``path`` will be created. Also, any directories that exist, along with new
+	directories created, will have mode set to ``dirmode`` and ``group`` and ``owner`` set to specified
+	group and owner.
+	"""
+	if not str(path).startswith(str(base) + os.sep):
+		return
+	if not path.exists:
+		if path.parent != base:
+			# recurse first --
+			makedirs(path.parent, base, owner=owner, group=group, dirmode=dirmode, exist_ok=exist_ok)
+		os.mkdir(path, mode=0o000)
+		if not path.is_dir():
+			raise FileExistsError(f"{path} exists but is not directory; aborting.")
+	path.chmod(dirmode)
+	os.chown(path, owner, group)
+
+
+def create_file(path: Path, base: Path, contents, echo=True, owner=None, group=None, mode=None, dirmode=None):
+	makedirs(path, base, owner=owner, group=group, dirmode=dirmode, exist_ok=True)
 	with open(path, mode='w', encoding="utf-8") as f:
 		f.write(contents)
+	path.chmod(mode)
+	os.chown(path, owner, group)
 	if echo:
 		print(f"Created file {path} with contents '{contents}'")
 
@@ -260,34 +286,45 @@ def curses_main(screen, selector):
 		print()
 
 
+def get_setting(settings, key):
+	if key not in settings:
+		raise RuntimeError(f"Expected {key} setting not defined in ~/.metro")
+	return settings["path/mirror/owner"]
+
+
 def main():
 	try:
 		if os.geteuid() != 0:
 			raise RuntimeError("Metro setup should be run as the root user.")
 		settings = MetroSetup().get_settings()
-		if "path/mirror" not in settings:
-			raise RuntimeError("path/mirror not defined")
-		elif not os.path.exists(settings["path/mirror"]):
+		mirror_path = Path(get_setting(settings, "path/mirror"))
+		owner = getpwnam(get_setting(settings, "path/mirror/owner")).pw_uid
+		group = getgrnam(get_setting(settings, "path/mirror/group")).gr_gid
+		dirmode = get_setting(settings, "path/mirror/dirmode")
+		dirmode = int("0o" + dirmode.lstrip("0"), 8)
+		# base file mode on directory mode
+		mode = dirmode & 0o777
+		if not mirror_path.exists():
 			raise RuntimeError(
-				f"{settings['path/mirror']} (path/mirror in ~/.metro) does not appear to exist. Please create it.")
+				f"{mirror_path} (path/mirror in ~/.metro) does not appear to exist. Please create it.")
 		else:
 			try:
-				test_file = Path(settings['path/mirror']).joinpath(".test_write")
-				create_file(test_file, "test", echo=False)
+				test_file = Path(mirror_path).joinpath(".test_write")
+				create_file(test_file, mirror_path, "test", echo=False, owner=owner, group=group, dirmode=dirmode, mode=mode)
 				os.unlink(test_file)
 			except PermissionError:
 				raise RuntimeError(
-					f"Unable to write to {settings['path/mirror']}. Please run as root (preferred) or change permissions on this directory.")
+					f"Unable to write to {mirror_path}. Please run as root (preferred) or change permissions on this directory.")
 		selector = LiveBuildSelector()
 		release, arch, subarch = curses.wrapper(curses_main, selector)
 		latest_build = selector.latest_build(release, arch, subarch)
-		arch_path = Path(settings['path/mirror']).joinpath(release)
+		arch_path = mirror_path.joinpath(release)
 		os.makedirs(arch_path.joinpath("snapshots"), exist_ok=True)
-		sub_path = Path(settings['path/mirror']).joinpath(release, arch, subarch)
+		sub_path = mirror_path.joinpath(release, arch, subarch)
 		c_path = sub_path.joinpath(".control")
-		create_file(c_path.joinpath("strategy", "build"), "local")
-		create_file(c_path.joinpath("strategy", "seed"), "stage3")
-		create_file(c_path.joinpath("version", "stage3"), latest_build)
+		create_file(c_path.joinpath("strategy", "build"), mirror_path, "local", owner=owner, group=group, dirmode=dirmode, mode=mode)
+		create_file(c_path.joinpath("strategy", "seed"), mirror_path, "stage3", owner=owner, group=group, dirmode=dirmode, mode=mode)
+		create_file(c_path.joinpath("version", "stage3"), mirror_path, latest_build, owner=owner, group=group, dirmode=dirmode, mode=mode)
 		build_path = sub_path.joinpath(latest_build)
 		os.makedirs(build_path, exist_ok=True)
 		archive = f"stage3-{subarch}-{release}-{latest_build}.tar.xz"
@@ -295,9 +332,11 @@ def main():
 		if out_path.exists():
 			print(f"warning: {out_path} appears to already exist. Skipping fetch.")
 		else:
-			retval = os.system(f"wget https://build.funtoo.org/{release}/{arch}/{subarch}/{latest_build}/{archive} -O {build_path}/{archive}")
+			retval = os.system(f"wget https://build.funtoo.org/{release}/{arch}/{subarch}/{latest_build}/{archive} -O {out_path}")
 			if retval:
 				raise RuntimeError("wget command failed.")
+		os.chown(out_path, owner, group)
+		os.chmod(out_path, mode)
 		print(f"\nMetro build for release {release}, {arch}, {subarch} has been initialized.")
 		print(f"""To build a new release, use ezbuild (or set up buildbot):
 		
