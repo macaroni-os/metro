@@ -8,6 +8,7 @@ from functools import wraps
 from pathlib import Path
 from pwd import getpwnam
 from grp import getgrnam
+from shutil import which
 
 import requests
 from lxml import html
@@ -341,7 +342,24 @@ def main():
 				raise RuntimeError("wget command failed.")
 		os.chown(out_path, owner, group)
 		os.chmod(out_path, mode)
+
+		if not os.path.exists("/root/ego"):
+			retval = os.system("git clone https://code.funtoo.org/bitbucket/scm/core/ego.git /root/ego")
+			if retval:
+				raise RuntimeError("Git clone of ego failed.")
+
+		fchroot_warn = False
+		if not which('fchroot'):
+			if which('emerge'):
+				retval = os.system("emerge --jobs=3 fchroot")
+				if retval:
+					raise RuntimeError("Fchroot could not be merged.")
+			else:
+				fchroot_warn = True
+
 		print(f"\nMetro build for release {release}, {arch}, {subarch} has been initialized.")
+		if fchroot_warn:
+			print("IMPORTANT: Please install fchroot before starting your build!")
 		print(f"""To build a new release, use ezbuild (or set up buildbot):
 		
 scripts/ezbuild.sh {release} {arch} {subarch} freshen+gnome""")
