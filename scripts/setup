@@ -293,7 +293,7 @@ def main():
 		archive = f"stage3-{subarch}-{release}-{latest_build}.tar.xz"
 		out_path = build_path.joinpath(archive)
 		if out_path.exists():
-			raise print(f"warning: {out_path} appears to already exist. Skipping fetch.")
+			print(f"warning: {out_path} appears to already exist. Skipping fetch.")
 		retval = os.system(f"wget https://build.funtoo.org/{release}/{arch}/{subarch}/{latest_build}/{archive} -O {build_path}/{archive}")
 		if retval:
 			raise RuntimeError("wget command failed.")
