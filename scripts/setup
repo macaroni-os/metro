@@ -281,16 +281,19 @@ def main():
 		selector = LiveBuildSelector()
 		release, arch, subarch = curses.wrapper(curses_main, selector)
 		latest_build = selector.latest_build(release, arch, subarch)
+		arch_path = Path(settings['path/mirror']).joinpath(release)
+		os.makedirs(arch_path.joinpath("snapshots"), exist_ok=True)
 		sub_path = Path(settings['path/mirror']).joinpath(release, arch, subarch)
 		c_path = sub_path.joinpath(".control")
-		create_file(c_path.joinpath("strategy", "build"), "stage3")
+		create_file(c_path.joinpath("strategy", "build"), "local")
+		create_file(c_path.joinpath("strategy", "seed"), "stage3")
 		create_file(c_path.joinpath("version", "stage3"), latest_build)
 		build_path = sub_path.joinpath(latest_build)
 		os.makedirs(build_path, exist_ok=True)
 		archive = f"stage3-{subarch}-{release}-{latest_build}.tar.xz"
 		out_path = build_path.joinpath(archive)
 		if out_path.exists():
-			raise RuntimeError(f"{out_path} appears to already exist. Please remove first.")
+			raise print(f"warning: {out_path} appears to already exist. Skipping fetch.")
 		retval = os.system(f"wget https://build.funtoo.org/{release}/{arch}/{subarch}/{latest_build}/{archive} -O {build_path}/{archive}")
 		if retval:
 			raise RuntimeError("wget command failed.")
