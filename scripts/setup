@@ -251,12 +251,14 @@ def curses_main(screen):
 
 def main():
 	try:
+		if os.geteuid() != 0:
+			raise RuntimeError("Metro should be run as the root user.")
 		settings = MetroSetup().get_settings()
 		if "path/mirror" not in settings:
 			raise RuntimeError("path/mirror not defined")
 		elif not os.path.exists(settings["path/mirror"]):
 			raise RuntimeError(
-				f"{settings['path/mirror']} (path/mirror in ~/.metro) does not appear to exist. Please create it.")
+				f"{settings['path/mirror']} (path/mirror in ~/.metro) does not appear to exist. Please create it.\nExample can be found in git repo at /metro.conf.")
 		else:
 			try:
 				test_file = Path(settings['path/mirror']).joinpath(".test_write")
@@ -267,10 +269,6 @@ def main():
 					f"Unable to write to {settings['path/mirror']}. Please run as root (preferred) or change permissions on this directory.")
 	except (RuntimeError, OSError) as e:
 		print(f"Exception: {e}")
-		print("""
-Please copy metro.conf to ~/.metro and customize path/install to point to the location where metro
-is installed, and path/mirror to where you want to store stages.		
-""")
 		sys.exit(1)
 	path_parts = curses.wrapper(curses_main)
 	sub_path = Path(settings['path/mirror']).joinpath(*path_parts)
