@@ -164,7 +164,7 @@ class collection:
 				continue
 			if unex[varpos:varpos+len(self.pre)+1] == "$[[":
 				# extra [, so it's a multi-line element .... which we just pass to the output unexpanded since it might be comented out...
-				# (we don't want to throw an excption if someone put a # in front of it.
+				# (we don't want to throw an exception if someone put a # in front of it.
 				ex += unex[0:varpos+len(self.pre)+1]
 				unex = unex[varpos+len(self.pre)+1:]
 				continue
@@ -261,20 +261,12 @@ class collection:
 						raise KeyError("Cannot find variable %s (in %s)" % (varname,myvar))
 					else:
 						ex += "no"
-		if fromfile == False:
+		if fromfile is False:
 			return ex
 
 		#use "ex" as a filename
-		try:
-			myfile=open(ex,"r")
-		except:
-			raise FlexDataError("Cannot open file "+ex+" specified in variable \""+mystring+"\"")
-		outstring=""
-		for line in myfile.readlines():
-			outstring=outstring+line[:-1]+" "
-		myfile.close()
-		return outstring[:-1]
-
+		with open(ex, "r") as myfile:
+			return myfile.read().strip()
 
 	def expandMulti(self,myvar,stack=[],options={}):
 		# TODO: ADD BOOLEAN SUPPORT HERE - NOT DONE YET
