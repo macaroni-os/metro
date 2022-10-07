@@ -42,7 +42,7 @@ def makedirs(path: Path, base: Path, owner=None, group=None, dirmode=None, exist
 
 
 def create_file(path: Path, base: Path, contents, echo=True, owner=None, group=None, mode=None, dirmode=None):
-	makedirs(path, base, owner=owner, group=group, dirmode=dirmode, exist_ok=True)
+	makedirs(path.parent, base, owner=owner, group=group, dirmode=dirmode, exist_ok=True)
 	with open(path, mode='w', encoding="utf-8") as f:
 		f.write(contents)
 	path.chmod(mode)
