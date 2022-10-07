@@ -289,7 +289,7 @@ def curses_main(screen, selector):
 def get_setting(settings, key):
 	if key not in settings:
 		raise RuntimeError(f"Expected {key} setting not defined in ~/.metro")
-	return settings["path/mirror/owner"]
+	return settings[key]
 
 
 def main():
