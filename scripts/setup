@@ -19,25 +19,65 @@ sys.path.append(os.path.join(script_dir, "../modules"))
 from metro_support import MetroSetup
 
 
-def makedirs(path: Path, base: Path, owner=None, group=None, dirmode=None, exist_ok=True):
+def path_inside(path: Path, base: Path):
 	"""
-	This command is an enhanced os.makedirs() function.
+	Is path ``path`` contained inside the path ``base``? Return True or False.
+	"""
+	if isinstance(path, Path):
+		tst_path = str(path)
+	else:
+		tst_path = path
+	if isinstance(base, Path):
+		tst_base = str(base)
+	else:
+		tst_base = base
+	return tst_path.startswith(tst_base + os.sep)
 
-	It will create all missing directories inside base path ``base``. It is designed not to perform any
-	action outside ``base`` -- so ``base`` must exist. However, any directories inside ``base`` that
-	are missing and part of ``path`` will be created. Also, any directories that exist, along with new
-	directories created, will have mode set to ``dirmode`` and ``group`` and ``owner`` set to specified
-	group and owner.
+
+def path_scoped(path: Path, base: Path):
 	"""
-	if not str(path).startswith(str(base) + os.sep):
+	Is path ``path`` equal to, or inside the path ``base``? Return True or False.
+	"""
+	return path == base or path_inside(path, base)
+
+
+def makedirs(path: Path, base: Path, owner=None, group=None, dirmode=None, exist_ok=True, create_parent=False):
+	"""
+	This command is an enhanced os.makedirs() function. It will ensure that ``path`` is created as
+	a directory (plus intermediate paths).
+
+	It will create all missing directories inside base path ``base``, including base path ``base`` if
+	it doesn't exist, but by default, it will not touch anything before path ``base``.
+
+	For anything it touches, it will also set the mode of each path element -- from ``base`` to the final
+	``path`` -- to ``dirmode``, and also set ownership to the UID and GID specified in ``group`` and
+	``owner``. It does this recursively, even if the directories already exist, so this function will
+	help to maintain proper directory ownership and permissions for its directories.
+
+	The optional ``create_parent`` boolean, which defaults to False, will create directories before
+	``base`` if they don't exist if set to True. Only the parent will get its mode, owner and group
+	tweaked. This special feature is here to create ``/home/mirror`` with the same settings as
+	``/home/mirror/funtoo``, even if ``/home/mirror/funtoo`` is where the repo-base is. This means
+	that the user won't have to manually create ``/home/mirror``.
+	"""
+	if not path_scoped(path, base):
+		# we are not operating on the mirror path, or a path inside it. So we are done (recursing):
 		return
+	if base == path:
+		if not base.parent.exists():
+			if create_parent:
+				os.makedirs(base.parent, mode=dirmode, exist_ok=True)
+				base.parent.chmod(dirmode)
+				os.chown(base.parent, owner, group)
+			else:
+				raise FileNotFoundError(f"Parent of base path {base} must exist for makedirs to work.")
+	else:
+		makedirs(path.parent, base, owner=owner, group=group, dirmode=dirmode, exist_ok=exist_ok, create_parent=create_parent)
 	if not path.exists():
-		if path.parent != base:
-			# recurse first --
-			makedirs(path.parent, base, owner=owner, group=group, dirmode=dirmode, exist_ok=exist_ok)
 		os.mkdir(path, mode=0o000)
-		if not path.is_dir():
-			raise FileExistsError(f"{path} exists but is not directory; aborting.")
+	elif not path.is_dir():
+		raise FileExistsError(f"{path} exists but is not directory; aborting.")
+	# *always* set dirmode and ownership on all path components
 	path.chmod(dirmode)
 	os.chown(path, owner, group)
 
@@ -303,6 +343,8 @@ def main():
 		group = getgrnam(get_setting(settings, "path/mirror/group")).gr_gid
 		dirmode = get_setting(settings, "path/mirror/dirmode")
 		dirmode = int("0o" + dirmode.lstrip("0"), 8)
+		makedirs(mirror_path, mirror_path, owner=owner, group=group, dirmode=dirmode, create_parent=True)
+
 		# base file mode on directory mode
 		mode = dirmode & 0o777
 		if not mirror_path.exists():
