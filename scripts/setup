@@ -30,7 +30,7 @@ def makedirs(path: Path, base: Path, owner=None, group=None, dirmode=None, exist
 	"""
 	if not str(path).startswith(str(base) + os.sep):
 		return
-	if not path.exists:
+	if not path.exists():
 		if path.parent != base:
 			# recurse first --
 			makedirs(path.parent, base, owner=owner, group=group, dirmode=dirmode, exist_ok=exist_ok)
