@@ -237,10 +237,14 @@ class Metro:
 				tarfound = None
 				if os.path.exists(targ):
 					tarfound = targ
+				elif os.path.exists(rawtar):
+					tarfound = rawtar
 				if tarfound:
 					cr.mesg(f"Target {tarfound} already exists - skipping...")
 					target.run_script("trigger/ok/run", optional=True)
 					continue
+				else:
+					cr.mesg(f"Target {rawtar} or {targ} not found...")
 			else:
 				# for QA builds, if a "status" file exists in the target path, this means we've already run.
 				# Don't run again.
