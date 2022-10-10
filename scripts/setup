@@ -359,8 +359,14 @@ def main():
 				raise RuntimeError(
 					f"Unable to write to {mirror_path}. Please run as root (preferred) or change permissions on this directory.")
 		selector = LiveBuildSelector()
-		release, arch, subarch = curses.wrapper(curses_main, selector)
-		latest_build = selector.latest_build(release, arch, subarch)
+		while True:
+			release, arch, subarch = curses.wrapper(curses_main, selector)
+			latest_build = selector.latest_build(release, arch, subarch)
+			if latest_build is None:
+				print("The subarch you selected appears to be empty. Please press any key and pick another.")
+				sys.stdin.read(1)
+			else:
+				break
 		arch_path = mirror_path.joinpath(release)
 
 		makedirs(arch_path.joinpath("snapshots"), mirror_path, owner=owner, group=group, dirmode=dirmode)
