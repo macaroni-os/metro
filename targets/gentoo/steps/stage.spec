@@ -87,7 +87,7 @@ if [ -n "$archdir" ] && [ -e "$archdir/toolchain-version" ]; then
 	# want when we have a new toolchain, to flush out old, now stable .tbz2 files.
 	toolchain_version="$(cat $archdir/toolchain-version)"
 fi
-if [ -e /var/tmp/cache/package ]
+if [ "$[path/cache/package?]" = "yes" ]
 then
 	export PKGDIR=/var/tmp/cache/package
 	if [ -n "$toolchain_version" ]; then

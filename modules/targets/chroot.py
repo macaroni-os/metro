@@ -14,8 +14,6 @@ class ChrootTarget(BaseTarget):
 		# we need a source archive
 		self.required_files.append("path/mirror/source")
 
-		options = ["cache/package"]
-
 		# define various mount points for our cache support (ccache, binpkgs, genkernel, etc).
 		caches = [
 			["path/cache/package", "cache/package", "/var/tmp/cache/package"],
@@ -24,13 +22,10 @@ class ChrootTarget(BaseTarget):
 		]
 
 		for key, name, dst in caches:
-			if name in options:
-				if key not in self.settings:
-					raise MetroError("Required setting %s not found (for %s option support)" % (key, name))
-				if self.settings[key] is not None:
-					# package cache dir will not be defined for snapshot...
-					self.cr.mesg("Enabling cache: %s" % key)
-					self.mounts[dst] = self.settings[key]
+			if self.settings[key] is not None:
+				# package cache dir will not be defined for snapshot...
+				self.cr.mesg("Enabling cache: %s" % key)
+				self.mounts[dst] = self.settings[key]
 
 	def run(self):
 		self.check_required_files()
