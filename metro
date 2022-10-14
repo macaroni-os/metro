@@ -228,7 +228,7 @@ class Metro:
 
 			# Now, we find the target and initialize it:
 
-			target = self.find_target(settings,cr)
+			target = self.find_target(settings, cr)
 
 			cr.mesg("Running target %s with class %s" % (targetname, settings["target/class"]))
 
@@ -363,6 +363,7 @@ class Metro:
 		if type(self.setup.targets.__dict__[cls]) != type:
 			raise NameError("target class "+cls+" does not appear to be a class.")
 		return self.setup.targets.__dict__[cls](settings, cr)
+
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])), "modules"))
 from metro_support import LockFile, CountFile, MetroError, CommandRunner, MetroSetup

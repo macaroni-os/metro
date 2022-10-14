@@ -22,8 +22,7 @@ class ChrootTarget(BaseTarget):
 		]
 
 		for key, name, dst in caches:
-			if self.settings[key] is not None:
-				# package cache dir will not be defined for snapshot...
+			if self.settings.has_key(key) and self.settings[key] is not None and self.settings[key] != "":
 				self.cr.mesg("Enabling cache: %s" % key)
 				self.mounts[dst] = self.settings[key]
 

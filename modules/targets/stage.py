@@ -1,5 +1,6 @@
 from .chroot import ChrootTarget
 
+
 class StageTarget(ChrootTarget):
 	def __init__(self, settings, cr):
 		ChrootTarget.__init__(self, settings, cr)
