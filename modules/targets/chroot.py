@@ -14,11 +14,8 @@ class ChrootTarget(BaseTarget):
 		# we need a source archive
 		self.required_files.append("path/mirror/source")
 
-		# define various mount points for our cache support (ccache, binpkgs, genkernel, etc).
 		caches = [
 			["path/cache/package", "cache/package", "/var/tmp/cache/package"],
-			["path/cache/kernel", "cache/kernel", "/var/tmp/cache/kernel"],
-			["path/cache/probe", "probe", "/var/tmp/cache/probe"],
 		]
 
 		for key, name, dst in caches:
