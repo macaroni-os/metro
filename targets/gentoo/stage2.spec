@@ -39,7 +39,7 @@ echo
 echo "USE is exported as: $USE"
 echo
 emerge $eopts --oneshot `python /tmp/bootstrap.py --pkglist` || exit 1
-emerge --clean 
+emerge --clean
 emerge --prune sys-devel/gcc || exit 1
 
 # Currently, a minimal, barely functional Python is installed. Upgrade to

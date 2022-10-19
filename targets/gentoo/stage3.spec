@@ -8,6 +8,11 @@ chroot/run: [
 #!/bin/bash
 $[[steps/setup]]
 
+# make sure eselect is available first. In theory, it should be on the stage1:
+if ! [ -e /usr/bin/eselect ]; then
+	emerge $eopts -1 eselect || exit 15
+fi
+
 # use python3
 a=$(eselect python list | sed -n -e '1d' -e 's/^.* \(python[3]\..\).*$/\1/g' -e '/python3/p')
 if [ "$a" != "" ]
