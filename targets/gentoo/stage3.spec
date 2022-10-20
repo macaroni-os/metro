@@ -10,7 +10,10 @@ $[[steps/setup]]
 
 # make sure eselect is available first. In theory, it should be on the stage1:
 if ! [ -e /usr/bin/eselect ]; then
-	emerge $eopts -1 eselect || exit 15
+	emerge $eopts -1 app-admin/eselect || exit 15
+else
+	# ensure we have the latest eselect availble before we start using it:
+	emerge -u1 app-admin/eselect
 fi
 
 # use python3
