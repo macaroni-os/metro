@@ -14,7 +14,7 @@ import base64
 def gen_base64(username, password):
 	d_b_encode = '%s:%s' % (username, password)
 	dEncode = bytes(d_b_encode,"utf-8")
-	bdEncode = base64.encodestring(dEncode).decode("utf-8")[:-1]
+	bdEncode = base64.encodebytes(dEncode).decode("utf-8")[:-1]
 	return bdEncode
 
 class JIRA(object):
