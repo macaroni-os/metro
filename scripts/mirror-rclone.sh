@@ -13,7 +13,6 @@ EXCLUDES="--exclude *.cme --exclude *.cme.run --exclude *.progress --exclude sta
 $mp/../metro/scripts/buildrepo index.xml
 $mp/../metro/scripts/indexr.py $mp
 SPEEDS="--b2-chunk-size=36M --b2-upload-cutoff=36M --transfers=8 --checkers=24"
-SPEEDS="--b2-chunk-size=36M --b2-upload-cutoff=36M --transfers=16 --checkers=24"
 rclone -Pl $EXCLUDES $EXTRA_EXCLUDES $SPEEDS sync $mp b2:funtoo-mirror
 rclone cleanup b2:funtoo-mirror
 if [ "$1" == "half" ]; then

@@ -635,7 +635,7 @@ elif sys.argv[1] == "compress":
 					if comp == "xz":
 						ext = ".xz.progress"
 						final_ext = ".xz"
-						call("PATH=/bin/:/usr/bin xz -f -9e --threads=0 -S .xz.progress " + tarfile, shell=True)
+						call("PATH=/bin/:/usr/bin xz -f -9e --threads=0 -M 70% -S .xz.progress " + tarfile, shell=True)
 					elif comp == "gz":
 						ext = ".gz.progress"
 						final_ext = ".gz"

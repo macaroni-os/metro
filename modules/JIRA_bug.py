@@ -12,7 +12,7 @@ class JIRAHook(object):
 
 	def _bugSubject(self):
 		# helper method -- return a subject for this particluar bug.
-		return "Metro QA: %s (%s) failure on %s" % ( self.settings["target/build"], self.settings["target/subarch"], self.hostname() )
+		return "Metro QA: %s (%s) %s failure on %s" % ( self.settings["target/build"], self.settings["target/subarch"], self.settings["target"], self.hostname() )
 
 	def hostname(self):
 		return socket.gethostname()
