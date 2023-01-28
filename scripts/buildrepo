@@ -31,6 +31,7 @@ from metro_support import LockFile, CountFile, CommandRunner, MetroSetup, StampF
 
 builds = ( )
 arches = ( )
+subarhes = ()
 index_ignore_builds = ()
 index_ignore_subarches = ()
 # these variables, if defined, are used for repo management (cleaning, etc.):
@@ -38,7 +39,9 @@ index_ignore_subarches = ()
 stale_days = 3
 max_failcount = 3
 keep_num = 2
-
+hostname = socket.gethostname()
+def get_subarches(hostname=None, release=None):
+	return subarches
 
 def map_build(build, arch_desc, subarch, full, full_date):
 	return "full"
@@ -244,12 +247,6 @@ return buildtype
 """)
 	sys.exit(1)
 
-try:
-	subarches
-except NameError:
-	subarches = get_host_subarches(socket.gethostname())
-
-
 def find_file_compressed_or_not(glob_pattern):
 	found_match = None
 	for match in glob.glob(glob_pattern):
@@ -311,22 +308,20 @@ def find_build(q, min_age=stale_days, max_age=None):
 if os.path.exists("/var/tmp/cleaner.db"):
 	os.unlink("/var/tmp/cleaner.db")
 db = MetroRepositoryDatabase()
-for release in builds:
-	if not os.path.exists("%s/%s" % (initial_path, release)):
-		continue
-	snapdir = "%s/%s/snapshots" % (initial_path, release)
-	if os.path.isdir(snapdir) and not os.path.islink(snapdir):
-		for match in glob.glob("%s/portage-*.tar.xz" % snapdir):
-			basename = os.path.basename(match)
-			if basename == "portage-current.tar.xz":
-				continue
-			sna = db.Snapshot()
-			sna.path = match
-			sna.release = release
-			with db.get_session() as session:
+with db.get_session() as session:
+	for release in builds:
+		if not os.path.exists("%s/%s" % (initial_path, release)):
+			continue
+		snapdir = "%s/%s/snapshots" % (initial_path, release)
+		if os.path.isdir(snapdir) and not os.path.islink(snapdir):
+			for match in glob.glob("%s/portage-*.tar.xz" % snapdir):
+				basename = os.path.basename(match)
+				if basename == "portage-current.tar.xz":
+					continue
+				sna = db.Snapshot()
+				sna.path = match
+				sna.release = release
 				session.add(sna)
-				session.commit()
-	with db.get_session() as session:
 		for arch in arches:
 			funky_path = "%s/%s/%s" % (initial_path, release, arch)
 			if not os.path.exists(funky_path):
@@ -363,7 +358,6 @@ for release in builds:
 				sa.path = path
 				session.add(sa)
 				session.flush()
-
 				for dirname in os.listdir(path):
 					if dirname == ".control":
 						continue
@@ -434,7 +428,6 @@ for release in builds:
 							break
 					session.add(bdir)
 					session.flush()
-
 					# NOW: CREATE ARTIFACTS, LINK TO BUILD DIR
 
 					for artifact_keyword, artifact_path in artifacts.items():
@@ -446,7 +439,6 @@ for release in builds:
 						art.path = artifact_path
 						art.date_str = bdir.date_str
 						session.add(art)
-						session.flush()
 					if most_recent_build_failed is None or most_recent_build_failed.date < bdir.date:
 						most_recent_build_failed = bdir
 					if complete and (most_recent_build is None or most_recent_build.date < bdir.date):
@@ -457,7 +449,6 @@ for release in builds:
 
 				# NOW, UPDATE SUBARCH OBJECT TO INCLUDE DATE INFORMATION:
 
-				sa = session.query(db.SubArch).filter(db.SubArch.id == sa.id).first()
 				sa.date = most_recent_build.date if most_recent_build else None
 				sa.date_str = most_recent_build.date_str if most_recent_build else None
 				sa.full_date = most_recent_complete_build.date if most_recent_complete_build else None
@@ -468,14 +459,13 @@ for release in builds:
 					sa.errors = most_recent_build_failed.errors
 
 				# is subarch in our list of things to build, or just to maintain (ie. clean, for main repo)?
-				if release in builds and arch in arches and subarch in subarches:
+				if release in builds and arch in arches and subarch in get_subarches(hostname=hostname, release=release):
 					sa.do_build = True
 				else:
 					sa.do_build = False
 				session.add(sa)
-				session.flush()
 
-			session.commit()
+session.commit()
 
 if sys.argv[1] == "clean":
 	with db.get_session() as session:
@@ -589,6 +579,7 @@ elif sys.argv[1] == "index.xml":
 						outxml.attrib[x] = bif_json[x]
 
 			outxml.attrib["builds"] = ",".join(map(str, range(1, count)))
+			print("writing to", subarch.path, "index.xml")
 			outf = open(os.path.join(subarch.path, "index.xml"), "wb")
 			outf.write(etree.tostring(outxml, encoding="UTF-8", pretty_print=True, xml_declaration=True))
 
