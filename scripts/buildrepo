@@ -493,8 +493,8 @@ if sys.argv[1] == "clean":
 				print(("rm %s*" % x.path))
 			for x in sna[-(keep_num - 1):]:
 				print(("# keeping %s" % x.path))
-		# Now, look at incomplete builds. Clean them out when they're stale and not the most recent build.
-		for x in session.query(db.BuildDir).filter_by(complete=False):
+		# Now, look at incomplete builds. Clean them out when they're stale and not the most recent build, and not referenced in version/stage3:
+		for x in session.query(db.BuildDir).filter_by(complete=False).filter_by(protected=False):
 			# ignore non-stale builds for cleaning -- they could be in-progress...
 			y = session.query(db.SubArch).filter_by(subarch=x.subarch_name).filter_by(arch=x.arch)
 			y = y.filter_by(release=x.release).order_by(db.SubArch.date_str).first()
