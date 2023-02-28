@@ -36,7 +36,7 @@ if [ "$[target/arch_desc]" == "x86-64bit" ]; then
 		intel64-skylake|intel64-broadwell)
 			epro mix-in gfxcard-intel-iris || exit 2
 			;;
-		intel64-*|generic_64)
+		*)
 			epro mix-in gfxcard-intel || exit 2
 			;;
 	esac

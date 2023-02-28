@@ -11,19 +11,23 @@ if [ -z "$mp" ]; then
 	echo "Could not get path/mirror from metro configuration; exiting."
 	exit 1
 fi
-$buildrepo clean | tee /tmp/foo.sh
-for x in $(find $mp -type l) ; do
-	echo "rm $x" >> /tmp/foo.sh
-done
-echo
-echo $mp
-echo "About to perform the above clean actions in 5 seconds... (^C to abort...)"
-for x in 5 4 3 2 1; do
-	echo -n "$x "
-	sleep 1
-done
-echo
-sh /tmp/foo.sh
+if [ "$1" != "noclean" ]; then
+	$buildrepo clean | tee /tmp/foo.sh
+	for x in $(find $mp -type l) ; do
+		echo "rm $x" >> /tmp/foo.sh
+	done
+	echo
+	echo $mp
+	echo "About to perform the above clean actions in 5 seconds... (^C to abort...)"
+	for x in 5 4 3 2 1; do
+		echo -n "$x "
+		sleep 1
+	done
+	echo
+	sh /tmp/foo.sh
+else
+	echo "Skipping cleaning..."
+fi
 $buildrepo digestgen
 echo "Regenerating symlinks"
 for subdir in $(cd $mp && ls -d */*/*/20* | cut -f1-3 -d/ | sort -u); do

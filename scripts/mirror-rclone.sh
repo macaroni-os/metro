@@ -1,5 +1,5 @@
 #!/bin/bash --login
-method="rsync"
+method="rclone"
 metro="$(dirname $0)/../metro"
 mp=$($metro -k path/mirror 2>/dev/null)
 if [ -z "$mp" ]; then
