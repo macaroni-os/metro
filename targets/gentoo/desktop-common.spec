@@ -29,7 +29,7 @@ epro mix-in $[desktop/mix-in] || exit 1
 extra_pkgs=""
 extra_initd=""
 if [ "$[target/arch_desc]" == "x86-64bit" ]; then
-	epro mix-in gfxcard-kvm gfxcard-nvidia gfxcard-amdgpu gfxcard-radeon gfxcard-vmware || exit 1
+	epro mix-in gfxcard-kvm gfxcard-amdgpu gfxcard-radeon gfxcard-vmware || exit 1
 	extra_pkgs="linux-firmware sof-firmware open-vm-tools"
 	extra_initd="vmware-tools"
 	case "$[target/subarch]" in
@@ -40,9 +40,6 @@ if [ "$[target/arch_desc]" == "x86-64bit" ]; then
 			epro mix-in gfxcard-intel || exit 2
 			;;
 	esac
-	for pkg in nvidia-kernel-modules; do
-		emerge $eopts $pkg || exit 4
-	done
 elif [ "$[target/arch_desc]" == "x86-32bit" ]; then
 	extra_pkgs="linux-firmware sof-firmware"
 	epro mix-in gfxcard-intel || exit 1
