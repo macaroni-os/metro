@@ -30,7 +30,7 @@ extra_pkgs=""
 extra_initd=""
 if [ "$[target/arch_desc]" == "x86-64bit" ]; then
 	epro mix-in gfxcard-kvm gfxcard-amdgpu gfxcard-radeon gfxcard-vmware || exit 1
-	extra_pkgs="linux-firmware sof-firmware open-vm-tools"
+	extra_pkgs="chrony grub linux-firmware sof-firmware open-vm-tools"
 	extra_initd="vmware-tools"
 	case "$[target/subarch]" in
 		intel64-skylake|intel64-broadwell)
@@ -40,8 +40,9 @@ if [ "$[target/arch_desc]" == "x86-64bit" ]; then
 			epro mix-in gfxcard-intel || exit 2
 			;;
 	esac
+
 elif [ "$[target/arch_desc]" == "x86-32bit" ]; then
-	extra_pkgs="linux-firmware sof-firmware"
+	extra_pkgs="chrony grub linux-firmware sof-firmware"
 	epro mix-in gfxcard-intel || exit 1
 elif [ "$[target/arch_desc]"] == "arm-64bit" ]; then
 	if [ "$[target/subarch]" == "raspi4" ]; then
@@ -51,6 +52,14 @@ elif [ "$[target/arch_desc]"] == "arm-64bit" ]; then
 		rc-update add swclock default || exit 4
 		extra_initd="busybox-ntpd"
 	fi
+fi
+# enable intel stuff for all intel things:
+targ_sub="$[target/subarch]"
+if [ "${targ_sub/intel/}" != "${targ_sub}" ]; then
+    extra_pkgs="$extra_pkgs intel-microcode iucode_tool"
+fi
+if [ -e /etc/init.d/chronyd ]; then
+    rc-update add chronyd default || exit 51
 fi
 emerge $eopts -uDN @world || exit 3
 emerge $eopts -uDN $[desktop/packages] metalog vim nss-mdns xorg-x11 $extra_pkgs || exit 4

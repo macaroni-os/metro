@@ -1,5 +1,5 @@
 #!/bin/bash --login
-method="rclone"
+method="rsync"
 metro="$(dirname $0)/../metro"
 mp=$($metro -k path/mirror 2>/dev/null)
 if [ -z "$mp" ]; then
@@ -14,7 +14,7 @@ $mp/../metro/scripts/buildrepo index.xml
 $mp/../metro/scripts/indexr.py $mp
 if [ "$method" == "rclone" ]; then
 	# RCLONE SYNC UP TO BACKBLAZE, THEN HAVE DIRECT-PULL PULL DOWN FROM BACKBLAZE
-	SPEEDS="--b2-chunk-size=18M --b2-upload-cutoff=36M --transfers=14 --checkers=28"
+	SPEEDS="--b2-chunk-size=18M --b2-upload-cutoff=36M --transfers=14 --checkers=28 --bwlimit=20M"
 	rclone -Pl $EXCLUDES $EXTRA_EXCLUDES $SPEEDS sync $mp b2:funtoo-mirror
 	rclone cleanup b2:funtoo-mirror
 	if [ "$1" == "half" ]; then
