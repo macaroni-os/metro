@@ -54,11 +54,11 @@ elif [ "$[target/arch_desc]"] == "arm-64bit" ]; then
 	fi
 fi
 # enable intel stuff for all intel things:
-targ_sub="$[target/subarch]
+targ_sub="$[target/subarch]""
 if [ "${targ_sub/intel/}" != "${targ_sub}" ]; then
     extra_pkgs="$extra_pkgs intel-microcode iucode_tool"
 fi
-if [ -e "/etc/init.d/chronyd" ]; then
+if [ -e /etc/init.d/chronyd ]; then
     rc-update add chronyd default || exit 51
 fi
 emerge $eopts -uDN @world || exit 3
