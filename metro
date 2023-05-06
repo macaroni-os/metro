@@ -1,6 +1,7 @@
 #!/usr/bin/python3 -OO
 
 import os, sys, getopt, subprocess, glob
+
 __app__ = os.path.basename(sys.argv[0])
 
 # we need this hard-coded path because we need a module here before we can parse our config file
@@ -34,6 +35,7 @@ def usage():
  [FILE]                     File(s) to parse and evaluate
 	""")
 
+
 def version():
 	print(" " + __app__, "version", __version__)
 	print()
@@ -54,11 +56,11 @@ def create_mirror_path(settings, path):
 	if subpath[0] == "/":
 		subpath = subpath[1:]
 	cur_path = root
-	dirmode = int(settings["path/mirror/dirmode"],8)
+	dirmode = int(settings["path/mirror/dirmode"], 8)
 	for path_el in subpath.split("/"):
 		cur_path = os.path.join(cur_path, path_el)
 		if os.path.exists(cur_path) and not os.path.isdir(cur_path):
-			raise PermissionError("Can't create path %s -- %s already exists and is not directory." % ( path, cur_path ))
+			raise PermissionError("Can't create path %s -- %s already exists and is not directory." % (path, cur_path))
 		if not os.path.exists(cur_path):
 			os.mkdir(cur_path, mode=dirmode)
 			shutil.chown(cur_path, user=settings["path/mirror/owner"], group=settings["path/mirror/group"])
@@ -82,7 +84,8 @@ class Metro:
 			sys.exit(1)
 
 		try:
-			self.opts, self.args = getopt.getopt(sys.argv[1:], "dfhvxVk:l:", ["debug", "debug-flexdata", "help", "verbose", "version", "key="])
+			self.opts, self.args = getopt.getopt(sys.argv[1:], "dfhvxVk:l:",
+												 ["debug", "debug-flexdata", "help", "verbose", "version", "key="])
 		except getopt.GetoptError:
 			usage()
 			sys.exit(1)
@@ -96,8 +99,8 @@ class Metro:
 		self.verbose = self.has_opts(["-v", "--verbose"])
 
 		# Step 2: set up metro modules and prepare to parse settings:
-		self.setup = MetroSetup(verbose=self.verbose,debug=self.debug)
-		if self.setup == None:
+		self.setup = MetroSetup(verbose=self.verbose, debug=self.debug)
+		if self.setup is None:
 			# setup object will handle printing any errors:
 			sys.exit(1)
 
@@ -127,7 +130,7 @@ class Metro:
 					targetlist += settings['multi/extras'].split()
 		else:
 			targetlist = [settings["target"]]
-		
+
 		self.run_targets(targetlist, self.args)
 
 	def has_opts(self, opts, fnc=any):
@@ -140,13 +143,13 @@ class Metro:
 				result = value
 		return result
 
-	def qa_hook(self,settings):
+	def qa_hook(self, settings):
 		if not "qa/type" in settings or not settings["qa/type"] == "jira":
 			return
 		jira_url = settings["qa/url"]
 		jira_user = settings["qa/username"]
 		jira_pass = settings["qa/password"]
-		myhook = JIRAHook(jira_url,jira_user,jira_pass,settings)
+		myhook = JIRAHook(jira_url, jira_user, jira_pass, settings)
 		myhook.run()
 
 	@staticmethod
@@ -157,12 +160,12 @@ class Metro:
 			try:
 				value = settings[key]
 			except:
-				print(key+" cannot be resolved with this target!")
+				print(key + " cannot be resolved with this target!")
 			else:
 				if type(value) is list:
-					print(key+": [...]")
+					print(key + ": [...]")
 				else:
-					print(key+": "+str(settings[key]))
+					print(key + ": " + str(settings[key]))
 
 	def run_targets(self, targetlist, args):
 		print("Running targetlist: %s" % targetlist)
@@ -173,7 +176,7 @@ class Metro:
 			pass
 
 		abort = error = False
-		
+
 		initial_settings = self.setup.get_settings(self.metro_args)
 
 		if len(temp_targets):
@@ -248,7 +251,7 @@ class Metro:
 			else:
 				# for QA builds, if a "status" file exists in the target path, this means we've already run.
 				# Don't run again.
-				if os.path.exists(settings["path/mirror/target/path"]+"/status"):
+				if os.path.exists(settings["path/mirror/target/path"] + "/status"):
 					cr.mesg("Status file already exists for target - skipping...")
 					continue
 
@@ -274,10 +277,11 @@ class Metro:
 							continue
 					else:
 						cr.mesg("Target already in progress -- %s exists. Aborting." % self.ts.path)
-						abort =  True
+						abort = True
 				else:
 					if not self.ts.create():
-						cr.mesg("Could not create lock file %s -- please ensure that %s directory exists." % ( self.ts.path, os.path.dirname(self.ts.path)))
+						cr.mesg("Could not create lock file %s -- please ensure that %s directory exists." % (
+						self.ts.path, os.path.dirname(self.ts.path)))
 						abort = error = True
 				if abort:
 					break
@@ -314,9 +318,9 @@ class Metro:
 
 		official = initial_settings["release/type"] == "official"
 		failcnt_fn = initial_settings["path/mirror/target/control"] + "/.failcount"
-		status_fn  = initial_settings["path/mirror/target/path"] + "/status"
+		status_fn = initial_settings["path/mirror/target/path"] + "/status"
 		failcnt = CountFile(failcnt_fn)
-			
+
 		# So we can grab this in the qa_hook:
 		initial_settings["target"] = current_target
 		initial_settings["success"] = "no" if error else "yes"
@@ -326,11 +330,11 @@ class Metro:
 				print("Incrementing failcount.")
 				# increment failcount - we record consecutive fails
 				failcnt.increment()
-			sf = open(status_fn,"w")
+			sf = open(status_fn, "w")
 			sf.write("fail")
 			sf.close()
 			shutil.chown(status_fn, user=initial_settings["path/mirror/owner"], group=initial_settings["path/mirror/group"])
-			if error and not user_abort:
+			if not user_abort:
 				# don't run failure QA hook if user aborted it.
 				self.qa_hook(initial_settings)
 		elif not user_abort:
@@ -338,7 +342,7 @@ class Metro:
 				print("Removing failcount.")
 				# we didn't fail - remove the fail counter if it exists:
 				failcnt.unlink()
-			sf = open(status_fn,"w")
+			sf = open(status_fn, "w")
 			sf.write("ok")
 			sf.close()
 			shutil.chown(status_fn, user=initial_settings["path/mirror/owner"], group=initial_settings["path/mirror/group"])
@@ -357,17 +361,18 @@ class Metro:
 		defined in "target/class" exists in there and is a class. If not, we raise an exception.
 
 		"""
-		cls = settings["target/class"].capitalize()+"Target"
+		cls = settings["target/class"].capitalize() + "Target"
 		if cls not in self.setup.targets.__dict__:
-			raise NameError("target class "+cls+" not defined in modules/targets.py.")
+			raise NameError("target class " + cls + " not defined in modules/targets.py.")
 		if type(self.setup.targets.__dict__[cls]) != type:
-			raise NameError("target class "+cls+" does not appear to be a class.")
+			raise NameError("target class " + cls + " does not appear to be a class.")
 		return self.setup.targets.__dict__[cls](settings, cr)
 
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])), "modules"))
 from metro_support import LockFile, CountFile, MetroError, CommandRunner, MetroSetup
 from JIRA_bug import JIRAHook
+
 m = Metro()
 m.run()
 
