@@ -3,7 +3,6 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$/../fchroot" vcs="Git" />
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/ego" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/etc/builds/1.4-release-std/selinux" vcs="Git" />
   </component>
 </project>

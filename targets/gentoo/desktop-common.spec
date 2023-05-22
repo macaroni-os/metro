@@ -58,13 +58,12 @@ targ_sub="$[target/subarch]"
 if [ "${targ_sub/intel/}" != "${targ_sub}" ]; then
     extra_pkgs="$extra_pkgs intel-microcode iucode_tool"
 fi
-if [ -e /etc/init.d/chronyd ]; then
-    rc-update add chronyd default || exit 51
-fi
 emerge $eopts -uDN @world || exit 3
 emerge $eopts -uDN $[desktop/packages] metalog vim nss-mdns xorg-x11 $extra_pkgs || exit 4
 emerge $eopts @preserved-rebuild -uDN -1 --backtrack=6 || exit 5
-
+if [ -e /etc/init.d/chronyd ]; then
+    rc-update add chronyd default || exit 51
+fi
 if [ -e /etc/init.d/elogind ]; then
 	rc-update add elogind boot
 fi
