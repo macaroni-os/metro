@@ -51,6 +51,7 @@ eselect python cleanup
 # perl update, fix FL-122
 perl-cleaner --all -- $eopts || exit 1
 emerge $eopts @preserved-rebuild || exit 3
+emerge $eopts @module-rebuild || exit 4
 ]
 
 [section portage]
