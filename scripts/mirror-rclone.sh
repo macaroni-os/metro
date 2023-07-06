@@ -22,14 +22,14 @@ if [ "$method" == "rclone" ]; then
 		echo "This part is done."
 		exit 0
 	fi
-	ssh drobbins@direct-pull.funtoo.org rclone sync -lP b2:funtoo-mirror/ /home/mirror/funtoo/
+	ssh -p 1022 drobbins@direct-pull.funtoo.org rclone sync -lP b2:funtoo-mirror/ /home/mirror/funtoo/
 elif [ "$method" == "rsync" ]; then
 	# SYNC DIRECTLY FROM THIS SYSTEM TO DIRECT-PULL:
-	rsync -azve ssh --delete $mp/ drobbins@direct-pull.funtoo.org:/home/mirror/funtoo/ $EXCLUDES $EXTRA_EXCLUDES --progress --stats
+	rsync -azve "ssh -p 1022" --delete $mp/ drobbins@direct-pull.funtoo.org:/home/mirror/funtoo/ $EXCLUDES $EXTRA_EXCLUDES --progress --stats
 else
 	echo "Unknown sync method: $method"
 	exit 1
 fi
-ssh drobbins@direct-pull.funtoo.org 'find /home/mirror/funtoo -type f -exec chmod 0644 {} \;'
-ssh drobbins@direct-pull.funtoo.org 'find /home/mirror/funtoo -type d -exec chmod 0755 {} \;'
-ssh root@www.funtoo.org /etc/init.d/memcached restart
+ssh -p 1022 drobbins@direct-pull.funtoo.org 'find /home/mirror/funtoo -type f -exec chmod 0644 {} \;'
+ssh -p 1022 drobbins@direct-pull.funtoo.org 'find /home/mirror/funtoo -type d -exec chmod 0755 {} \;'
+ssh -p 1022 root@www.funtoo.org /etc/init.d/memcached restart
