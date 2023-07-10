@@ -50,6 +50,7 @@ eselect python cleanup
 # run perl-cleaner to ensure all modules rebuilt after a major
 # perl update, fix FL-122
 perl-cleaner --all -- $eopts || exit 1
+emerge --depclean || exit 2
 emerge $eopts @preserved-rebuild || exit 3
 emerge $eopts @module-rebuild || exit 4
 ]
