@@ -75,7 +75,7 @@ class MetroSetup(object):
 		if extraargs:
 			for arg in list(extraargs.keys()):
 				settings[arg] = extraargs[arg]
-		settings.runCollector()
+		settings.run_collector()
 		if settings["portage/MAKEOPTS"] == "auto":
 			settings["portage/MAKEOPTS"] = "-j%s" % (int(subprocess.getoutput("nproc --all")) + 1)
 

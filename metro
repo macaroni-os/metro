@@ -1,39 +1,25 @@
 #!/usr/bin/python3 -OO
 
-import os, sys, getopt, subprocess, glob
+import getopt
+import os
+import sys
+import shutil
+
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])), "modules"))
+from metro_support import LockFile, CountFile, MetroError, CommandRunner, MetroSetup
+from JIRA_bug import JIRAHook
 
 __app__ = os.path.basename(sys.argv[0])
 
 # we need this hard-coded path because we need a module here before we can parse our config file
 __maintainer__ = "Daniel Robbins <drobbins@funtoo.org>"
 
-__license__ = """ Distributed under the terms of the GNU General Public License version 2
- Metro comes with ABSOLUTELY NO WARRANTY; This is free software, and you are welcome to
- redistribute it under certain conditions. See /usr/lib/metro/LICENSE for details.
+__license__ = """Distributed under the terms of the GNU General Public License version 2
+Metro comes with ABSOLUTELY NO WARRANTY; This is free software, and you are welcome to
+redistribute it under certain conditions. See /usr/lib/metro/LICENSE for details.
 """
 __status__ = "Release"
 __version__ = "2.0.0"
-
-import shutil
-
-
-def usage():
-	version()
-	print(""" metro [OPTION]... [FILE]...
-
- -h, --help                 Print this message
- -V, --version              Display version information
-
- -d, --debug                Enable debug mode
- -f, --debug-flexdata       Resolve and print flexdata tree
- -v, --verbose              Verbose mode
-
- -N, --notrigger            Disable build triggers
-
- -k [key], --key [key]      Print value of [key], ie. "distfiles"
-
- [FILE]                     File(s) to parse and evaluate
-	""")
 
 
 def version():
@@ -43,9 +29,29 @@ def version():
 	print(" Maintainer:", __maintainer__)
 	print()
 	print(" Web: https://www.funtoo.org")
-	print(" Documentation: http://www.funtoo.org/Metro")
+	print(" Documentation: https://www.funtoo.org/Metro")
 	print()
 	print(__license__)
+
+
+def usage():
+	version()
+	print(
+		" metro [OPTION]... [FILE]...\n"
+		"\n"
+		" -h, --help                 Print this message\n"
+		" -V, --version              Display version information\n"
+		"\n"
+		" -d, --debug                Enable debug mode\n"
+		" -f, --debug-flexdata       Resolve and print flexdata tree\n"
+		" -v, --verbose              Verbose mode\n"
+		"\n"
+		" -N, --notrigger            Disable build triggers\n"
+		"\n"
+		" -k [key], --key [key]      Print value of [key], ie. \"distfiles\"\n"
+		"\n"
+		" [FILE]                     File(s) to parse and evaluate\n"
+	)
 
 
 def create_mirror_path(settings, path):
@@ -85,7 +91,7 @@ class Metro:
 
 		try:
 			self.opts, self.args = getopt.getopt(sys.argv[1:], "dfhvxVk:l:",
-												 ["debug", "debug-flexdata", "help", "verbose", "version", "key="])
+			                                     ["debug", "debug-flexdata", "help", "verbose", "version", "key="])
 		except getopt.GetoptError:
 			usage()
 			sys.exit(1)
@@ -144,12 +150,9 @@ class Metro:
 		return result
 
 	def qa_hook(self, settings):
-		if not "qa/type" in settings or not settings["qa/type"] == "jira":
+		if "qa/type" not in settings or not settings["qa/type"] == "jira":
 			return
-		jira_url = settings["qa/url"]
-		jira_user = settings["qa/username"]
-		jira_pass = settings["qa/password"]
-		myhook = JIRAHook(jira_url, jira_user, jira_pass, settings)
+		myhook = JIRAHook(settings)
 		myhook.run()
 
 	@staticmethod
@@ -185,8 +188,8 @@ class Metro:
 
 			# It looks like we are building something. Therefore, we should "lock" the build/arch/subarch.
 			# This locking will allow other multi-target runs to abort early, and allow buildbot to actually
-			# skip over in-progress multi-targets so it can build the next multi-target (allowing parallel
-			# multi-target builds.
+			# skip over in-progress multi-targets, so it can build the next multi-target (allowing parallel
+			# multi-target builds.)
 
 			multi_tsfn = initial_settings["path/mirror/target/control"] + "/.multi_progress"
 			self.multi_ts = LockFile(multi_tsfn)
@@ -281,7 +284,7 @@ class Metro:
 				else:
 					if not self.ts.create():
 						cr.mesg("Could not create lock file %s -- please ensure that %s directory exists." % (
-						self.ts.path, os.path.dirname(self.ts.path)))
+							self.ts.path, os.path.dirname(self.ts.path)))
 						abort = error = True
 				if abort:
 					break
@@ -290,7 +293,7 @@ class Metro:
 						# This is where the target actually gets run
 						target.run()
 					except MetroError as m:
-						cr.mesg("Metro encountered an error: %s" % m)
+						cr.mesg(f"Metro encountered an error: {m}")
 						abort = error = True
 						break
 					except KeyboardInterrupt:
@@ -307,7 +310,7 @@ class Metro:
 			except KeyboardInterrupt:
 				cr.mesg("Target %s aborted due to user interrupt (ctrl-C)" % targetname)
 				abort = user_abort = True
-				if self.ts != None:
+				if self.ts is not None:
 					self.ts.unlink()
 				# break out of multi-target loop so we can exit:
 				break
@@ -368,10 +371,6 @@ class Metro:
 			raise NameError("target class " + cls + " does not appear to be a class.")
 		return self.setup.targets.__dict__[cls](settings, cr)
 
-
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])), "modules"))
-from metro_support import LockFile, CountFile, MetroError, CommandRunner, MetroSetup
-from JIRA_bug import JIRAHook
 
 m = Metro()
 m.run()
