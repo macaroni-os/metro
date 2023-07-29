@@ -56,7 +56,7 @@ class MetroSetup(object):
 
 		if self.verbose:
 			print("Using main configuration file %s.\n" % self.configfile)
-		settings = self.flexdata.collection(self.debug)
+		settings = self.flexdata.Collection(self.debug)
 
 		if os.path.exists(self.configfile):
 			settings.collect(self.configfile, None)
@@ -84,7 +84,8 @@ class MetroSetup(object):
 
 class CommandRunner(object):
 
-	"""CommandRunner is a class that allows commands to run, and messages to be displayed. By default, output will go to a log file. Messages will appear on stdout and in the logs."""
+	"""CommandRunner is a class that allows commands to run, and messages to be displayed. By default, output will go to a log file.
+	Messages will appear on stdout and in the logs."""
 
 	def __init__(self, settings=None, logging=True):
 		self.settings = settings
@@ -94,7 +95,10 @@ class CommandRunner(object):
 			if not os.path.exists(os.path.dirname(self.fname)):
 				# create output directory for logs
 				self.logging = False
-				self.run(["install", "-o", self.settings["path/mirror/owner"], "-g", self.settings["path/mirror/group"], "-m", self.settings["path/mirror/dirmode"], "-d", os.path.dirname(self.fname)], {})
+				self.run(
+					["install", "-o", self.settings["path/mirror/owner"], "-g", self.settings["path/mirror/group"], "-m",
+					self.settings["path/mirror/dirmode"], "-d", os.path.dirname(self.fname)], {}
+				)
 				self.logging = True
 			self.cmdout = open(self.fname, "w+")
 			# set logfile ownership:
@@ -128,7 +132,8 @@ class CommandRunner(object):
 					self.mesg("Attempting to extract failed ebuild information...")
 					if self.cmdout:
 						self.cmdout.flush()
-					s, out = subprocess.getstatusoutput('cat %s | grep "^ \\* ERROR: " | sort -u | sed -e \'s/^ \\* ERROR: \\(.*\\) failed (\\(.*\\) phase).*/\\1 \\2/g\'' % self.fname)
+					s, out = subprocess.getstatusoutput(
+						f'cat {self.fname} | grep "^ \\* ERROR: " | sort -u | sed -e \'s/^ \\* ERROR: \\(.*\\) failed (\\(.*\\) phase).*/\\1 \\2/g\'')
 					if s == 0:
 						errors = []
 						for line in out.split('\n'):
@@ -150,7 +155,7 @@ class CommandRunner(object):
 			return 0
 
 
-class StampFile(object):
+class StampFile:
 
 	def __init__(self, path):
 		self.path = path
@@ -186,11 +191,9 @@ class StampFile(object):
 			return False
 		return True
 
-		def exists(self):
-			return False
-
 	def gen_file_contents(self):
 		return ""
+
 
 class LockFile(StampFile):
 
@@ -276,7 +279,7 @@ class LockFile(StampFile):
 		super().unlink()
 
 	def unlink(self, force=False):
-		"""only unlink if *we* (hostname, pid) created the file. Otherwise leave alone."""
+		"""only unlink if *we* (hostname, pid) created the file. Otherwise, leave alone."""
 		do_unlink = False
 		if os.path.exists(self.path):
 			if not self.created_by_this_host:
