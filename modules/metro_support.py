@@ -10,6 +10,8 @@ import sys
 import time
 from importlib import import_module
 
+from flexdata import Collection
+
 
 def ismount(path):
 	"""enhanced to handle bind mounts"""
@@ -88,7 +90,7 @@ class CommandRunner(object):
 	"""CommandRunner is a class that allows commands to run, and messages to be displayed. By default, output will go to a log file.
 	Messages will appear on stdout and in the logs."""
 
-	def __init__(self, settings=None, logging=True):
+	def __init__(self, settings: Collection = None, logging=True):
 		self.settings = settings
 		self.logging = logging
 		if self.settings and self.logging:
@@ -130,8 +132,8 @@ class CommandRunner(object):
 		line = line[len(prefix):]
 		line = line.strip("'")
 		line = line.lstrip("/")
-		full_build_log_path = os.path.join(self.settings("path/work"), line)
-		# Copy the found build.log so it sits next to errors.json in the metro logs dir:
+		full_build_log_path = os.path.join(self.settings["path/work"], line)
+		# Copy the found build.log, so it sits next to errors.json in the metro logs dir:
 		shutil.copy(full_build_log_path, self.settings["path/mirror/target/path"] + "build.log")
 
 	def extract_build_log_catpkg(self):
@@ -230,7 +232,7 @@ class StampFile:
 class LockFile(StampFile):
 
 	"""Class to create lock files; used for tracking in-progress metro builds."""
-		
+
 	def __init__(self, path):
 		super().__init__(path)
 		self.hostname = subprocess.getoutput("/bin/hostname")
