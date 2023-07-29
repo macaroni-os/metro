@@ -44,6 +44,9 @@ class JIRAHook:
 				a = open(err_fn, "r")
 				out["failed_ebuilds"] = json.loads(a.read())
 				a.close()
+			build_log = out["path"] + "/log/build.log"
+			if os.path.exists(build_log):
+				out["build_log"] = build_log
 		if "success" in self.settings:
 			out["success"] = self.settings["success"]
 		return out
@@ -64,6 +67,13 @@ class JIRAHook:
 
 	def on_failure(self):
 		matching = self.all_matching
+		info = self.info()
+		if "build_log" in info:
+			build_log_path = info["build_log"]
+			del info["build_log"]
+		else:
+			build_log_path = None
+		jira_key = None
 		if not matching:
 			# If one doesn't exist, create a new issue...
 			jira_key = self.jira.create_issue(
@@ -79,6 +89,10 @@ class JIRAHook:
 					match,
 					"Another build failure has occurred. Details below:\n{code}\n" + json.dumps(self.info(), indent=4, sort_keys=True) + "\n{code}\n"
 				)
+				jira_key = match
+				break
+		if jira_key and build_log_path:
+			self.jira.attach_build_log_to_issue(jira_key, build_log_path)
 
 	def on_success(self):
 		for i in self.all_matching():

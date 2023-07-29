@@ -2,6 +2,9 @@
 
 import base64
 import json
+import os
+from datetime import datetime
+
 import requests
 
 
@@ -51,9 +54,8 @@ class JIRA:
 		except ValueError:
 			print("createIssue: Error decoding JSON from POST. Possible connection error.")
 			return None
-		if 'key' in j:
-			return j['key']
-		return None
+		issue_key = j['key']
+		return issue_key
 
 	def create_subtask(self, parent_key, project, title, description):
 		return self.create_issue(project=project, title=title, description=description, issue_type="Sub-task", extra_fields={'parent': parent_key})
@@ -77,6 +79,36 @@ class JIRA:
 		headers = {"Content-type": "application/json", "Accept": "application/json", "Authorization": self.get_auth()}
 		data = {'body': comment}
 		r = requests.post(url, data=json.dumps(data), headers=headers)
+		if r.status_code == requests.codes.ok:
+			return True
+		else:
+			return False
+
+	def create_xz_build_log(self, build_log_path):
+		"""For uploading a build log to JIRA, we want to timestamp it as well as xz compress the log for space savings."""
+		date = datetime.strftime(datetime.now(), "%Y-%m-%d:%H:%M:%S")
+		for cmd in [
+			f"cp {build_log_path} /var/tmp/build-{date}.log",
+			f"xz -9 /var/tmp/build-{date}.log"
+		]:
+			retval = os.system(cmd)
+			if retval != 0:
+				raise SystemError(f"Command failure: {cmd}; exit value: {retval}")
+		return f"/var/tmp/build-{date}.log.xz"
+
+	def attach_build_log_to_issue(self, issue, build_log_path):
+		headers = {"Content-type": "application/json", "Accept": "application/json", "Authorization": self.get_auth()}
+
+		xz_log_path = self.create_xz_build_log(build_log_path)
+		files = {'file': open(xz_log_path, 'rb')}
+		os.unlink(xz_log_path)
+
+		url = self.url + f"/issue/{issue['key']}/attachments"
+		r = requests.post(
+			url=url,
+			headers=headers,
+			files=files,
+		)
 		if r.status_code == requests.codes.ok:
 			return True
 		else:

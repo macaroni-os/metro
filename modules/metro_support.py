@@ -4,6 +4,7 @@ import grp
 import json
 import os
 import pwd
+import shutil
 import subprocess
 import sys
 import time
@@ -111,6 +112,60 @@ class CommandRunner(object):
 			self.cmdout.flush()
 		sys.stdout.write(msg + "\n")
 
+	def extract_build_log_path(self):
+		"""
+		Scan metro build log and extract the full path to the build.log of the failed package.
+		"""
+		prefix = " * The complete build log is located at "
+		s, out = subprocess.getstatusoutput(
+			f'tac /{self.fname} | grep -m 1 -E "^ \\* The complete build log is located at"'
+		)
+		if s != 0:
+			raise SystemError("Couldn't run tac on build log.")
+		line = out.strip()
+		if line.endswith("\n"):
+			line = line[:-1]
+		if line.endswith("."):
+			line = line[:-1]
+		line = line[len(prefix):]
+		line = line.strip("'")
+		line = line.lstrip("/")
+		full_build_log_path = os.path.join(self.settings("path/work"), line)
+		# Copy the found build.log so it sits next to errors.json in the metro logs dir:
+		shutil.copy(full_build_log_path, self.settings["path/mirror/target/path"] + "build.log")
+
+	def extract_build_log_catpkg(self):
+		"""
+		Scan metro build log and extract the actual package the failed, along with associated metadata.
+		"""
+		s, out = subprocess.getstatusoutput(
+			f'cat {self.fname} | grep "^ \\* ERROR: " | sort -u | sed -e \'s/^ \\* ERROR: \\(.*\\) failed (\\(.*\\) phase).*/\\1 \\2/g\'')
+		if s == 0:
+			errors = []
+			for line in out.split('\n'):
+				print("Processing line", line)
+				parts = line.split()
+				if len(parts) != 2:
+					# not what we're looking for
+					continue
+				if len(parts[0].split("/")) != 2:
+					continue
+				errors.append({"ebuild": parts[0], "phase": parts[1]})
+			if len(errors):
+				fname = self.settings["path/mirror/target/path"] + "/log/errors.json"
+				self.mesg("Detected failed ebuilds... writing to %s." % fname)
+				a = open(fname, "w")
+				a.write(json.dumps(errors, indent=4))
+				a.close()
+
+	def do_error_scan(self):
+		# scan log for errors -- and extract them!
+		self.mesg("Attempting to extract failed ebuild information...")
+		if self.cmdout:
+			self.cmdout.flush()
+		self.extract_build_log_catpkg()
+		self.extract_build_log_path()
+
 	def run(self, cmdargs, env, error_scan=False):
 		self.mesg("Running command: %s (env %s) " % (cmdargs, env))
 		cmd = None
@@ -128,31 +183,8 @@ class CommandRunner(object):
 			if exitcode != 0:
 				self.mesg("Command exited with return code %s" % exitcode)
 				if error_scan and self.logging:
-					# scan log for errors -- and extract them!
-					self.mesg("Attempting to extract failed ebuild information...")
-					if self.cmdout:
-						self.cmdout.flush()
-					s, out = subprocess.getstatusoutput(
-						f'cat {self.fname} | grep "^ \\* ERROR: " | sort -u | sed -e \'s/^ \\* ERROR: \\(.*\\) failed (\\(.*\\) phase).*/\\1 \\2/g\'')
-					if s == 0:
-						errors = []
-						for line in out.split('\n'):
-							print("Processing line", line)
-							parts = line.split()
-							if len(parts) != 2:
-								# not what we're looking for
-								continue
-							if len(parts[0].split("/")) != 2:
-								continue
-							errors.append({"ebuild": parts[0], "phase": parts[1]})
-						if len(errors):
-							fname = self.settings["path/mirror/target/path"] + "/log/errors.json"
-							self.mesg("Detected failed ebuilds... writing to %s." % fname)
-							a = open(fname, "w")
-							a.write(json.dumps(errors, indent=4))
-							a.close()
-				return exitcode
-			return 0
+					self.do_error_scan()
+			return exitcode
 
 
 class StampFile:
