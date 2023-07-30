@@ -100,7 +100,7 @@ class JIRAHook:
 			os.unlink(build_log_attachment)
 
 	def on_success(self):
-		for i in self.all_matching():
+		for i in self.all_matching:
 			print("Closing matching issue %s" % i['key'])
 			self.jira.comment_on_issue(
 				i,
