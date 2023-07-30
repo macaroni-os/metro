@@ -23,11 +23,7 @@ class JIRAHook:
 			prefix = f"{self.settings['qa/prefix']}: "
 		else:
 			prefix = " "
-		return f"Metro: {prefix}({self.settings['target/subarch']}) {self.settings['target']} failure on {self.hostname}"
-
-	@property
-	def hostname(self):
-		return socket.gethostname()
+		return f"Metro: {prefix}({self.settings['target/subarch']}) {self.settings['target']} failure"
 
 	def info(self):
 		out = {}
@@ -37,18 +33,22 @@ class JIRAHook:
 				out[x] = self.settings[k]
 		if "target" in self.settings:
 			out["target"] = self.settings["target"]
-		if "path/mirror/target/path" in self.settings:
-			out["path"] = self.settings["path/mirror/target/path"]
-			err_fn = out["path"] + "/log/errors.json"
-			if os.path.exists(err_fn):
-				a = open(err_fn, "r")
-				out["failed_ebuilds"] = json.loads(a.read())
-				a.close()
-			build_log = out["path"] + "/log/build.log"
-			if os.path.exists(build_log):
-				out["build_log"] = build_log
-		if "success" in self.settings:
-			out["success"] = self.settings["success"]
+		out["hostname"] = socket.getfqdn()
+		out["success"] = self.settings["success"]
+		if out["success"] == "no":
+			if "path/mirror/target/path" in self.settings:
+				out["path"] = self.settings["path/mirror/target/path"]
+				err_fn = out["path"] + "/log/errors.json"
+				if os.path.exists(err_fn):
+					a = open(err_fn, "r")
+					out["failed_ebuilds"] = json.loads(a.read())
+					a.close()
+				build_log = os.path.join(out["path"], "log/build.log")
+				if os.path.exists(build_log):
+					out["build_log_attachment"] = self.jira.create_xz_build_log(build_log)
+					if "qa/fqdn" in self.settings:
+						url_path = out["path"][len(self.settings["path/mirror"]):].lstrip("/")
+						out["build_log_url"] = self.settings["qa/fqdn"] + "/" + url_path + "/log/build.log"
 		return out
 
 	@property
@@ -68,31 +68,36 @@ class JIRAHook:
 	def on_failure(self):
 		matching = self.all_matching
 		info = self.info()
-		if "build_log" in info:
-			build_log_path = info["build_log"]
-			del info["build_log"]
-		else:
-			build_log_path = None
+
+		# Do final fix-up of the info dict:
 		jira_key = None
+		if "build_log_attachment" in info:
+			build_log_attachment = info["build_log_attachment"]
+			info["build_log_attachment"] = os.path.basename(info["build_log_attachment"])
+		else:
+			build_log_attachment = None
+
+		# Now create or add to an issue:
 		if not matching:
 			# If one doesn't exist, create a new issue...
 			jira_key = self.jira.create_issue(
 				project='QA',
 				title=self.bug_subject,
-				description="A build failure has occurred. Details below:\n{code}\n" + json.dumps(self.info(), indent=4, sort_keys=True) + "\n{code}\n"
+				description="A build failure has occurred. Details below:\n{code}\n" + json.dumps(info, indent=4, sort_keys=True) + "\n{code}\n"
 			)
 			print(f"Created issue {jira_key}")
 		else:
-			# Update comment with new build failure info, to avoid creating a brand new bug.
+			# Update comment with new build failure info, to avoid creating a brand-new bug.
 			for match in matching:
 				self.jira.comment_on_issue(
 					match,
-					"Another build failure has occurred. Details below:\n{code}\n" + json.dumps(self.info(), indent=4, sort_keys=True) + "\n{code}\n"
+					"Another build failure has occurred. Details below:\n{code}\n" + json.dumps(info, indent=4, sort_keys=True) + "\n{code}\n"
 				)
-				jira_key = match
+				jira_key = match["key"]
 				break
-		if jira_key and build_log_path:
-			self.jira.attach_build_log_to_issue(jira_key, build_log_path)
+		if build_log_attachment:
+			self.jira.attach_build_log_to_issue(jira_key, build_log_attachment)
+			os.unlink(build_log_attachment)
 
 	def on_success(self):
 		for i in self.all_matching():

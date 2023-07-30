@@ -89,21 +89,19 @@ class JIRA:
 		date = datetime.strftime(datetime.now(), "%Y-%m-%d:%H:%M:%S")
 		for cmd in [
 			f"cp {build_log_path} /var/tmp/build-{date}.log",
-			f"xz -9 /var/tmp/build-{date}.log"
+			f"xz -9 -f /var/tmp/build-{date}.log"
 		]:
 			retval = os.system(cmd)
 			if retval != 0:
 				raise SystemError(f"Command failure: {cmd}; exit value: {retval}")
 		return f"/var/tmp/build-{date}.log.xz"
 
-	def attach_build_log_to_issue(self, issue, build_log_path):
-		headers = {"Content-type": "application/json", "Accept": "application/json", "Authorization": self.get_auth()}
-
-		xz_log_path = self.create_xz_build_log(build_log_path)
-		files = {'file': open(xz_log_path, 'rb')}
-		os.unlink(xz_log_path)
-
-		url = self.url + f"/issue/{issue['key']}/attachments"
+	def attach_build_log_to_issue(self, issue_key, xz_log_path):
+		headers = {"Accept": "application/json", "Authorization": self.get_auth(), 'X-Atlassian-Token': 'no-check'}
+		files = [
+			('file', (os.path.basename(xz_log_path), open(xz_log_path, 'rb')))
+		]
+		url = self.url + f"/issue/{issue_key}/attachments"
 		r = requests.post(
 			url=url,
 			headers=headers,

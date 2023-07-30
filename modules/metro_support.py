@@ -85,7 +85,7 @@ class MetroSetup(object):
 		return settings
 
 
-class CommandRunner(object):
+class CommandRunner:
 
 	"""CommandRunner is a class that allows commands to run, and messages to be displayed. By default, output will go to a log file.
 	Messages will appear on stdout and in the logs."""
@@ -120,21 +120,19 @@ class CommandRunner(object):
 		"""
 		prefix = " * The complete build log is located at "
 		s, out = subprocess.getstatusoutput(
-			f'tac /{self.fname} | grep -m 1 -E "^ \\* The complete build log is located at"'
+			f'tac {self.fname} | grep -m 1 -E "^ \\* The complete build log is located at"'
 		)
 		if s != 0:
 			raise SystemError("Couldn't run tac on build log.")
 		line = out.strip()
-		if line.endswith("\n"):
-			line = line[:-1]
+		line = line[len(prefix):]
 		if line.endswith("."):
 			line = line[:-1]
-		line = line[len(prefix):]
 		line = line.strip("'")
 		line = line.lstrip("/")
 		full_build_log_path = os.path.join(self.settings["path/work"], line)
 		# Copy the found build.log, so it sits next to errors.json in the metro logs dir:
-		shutil.copy(full_build_log_path, self.settings["path/mirror/target/path"] + "build.log")
+		shutil.copy(full_build_log_path, os.path.join(self.settings["path/mirror/target/path"], "log/build.log"))
 
 	def extract_build_log_catpkg(self):
 		"""
@@ -145,7 +143,6 @@ class CommandRunner(object):
 		if s == 0:
 			errors = []
 			for line in out.split('\n'):
-				print("Processing line", line)
 				parts = line.split()
 				if len(parts) != 2:
 					# not what we're looking for
@@ -154,7 +151,7 @@ class CommandRunner(object):
 					continue
 				errors.append({"ebuild": parts[0], "phase": parts[1]})
 			if len(errors):
-				fname = self.settings["path/mirror/target/path"] + "/log/errors.json"
+				fname = os.path.join(self.settings["path/mirror/target/path"], "log/errors.json")
 				self.mesg("Detected failed ebuilds... writing to %s." % fname)
 				a = open(fname, "w")
 				a.write(json.dumps(errors, indent=4))
