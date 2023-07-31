@@ -9,11 +9,14 @@ from bug_utils import JIRA
 
 class JIRAHook:
 
+	project = None
+
 	def __init__(self, settings):
 		self.settings = settings
 		jira_url = settings["qa/url"]
 		jira_user = settings["qa/username"]
 		jira_pass = settings["qa/password"]
+		self.project = settings["qa/project"]
 		self.jira = JIRA(jira_url, jira_user, jira_pass)
 
 	@property
@@ -54,7 +57,7 @@ class JIRAHook:
 	@property
 	def all_matching(self):
 		i = self.jira.get_all_issues(
-			{'jql': 'Summary ~ "\\"%s\\"" and project = QA and status != closed' % self.bug_subject, 'maxresults': 1000})
+			{'jql': f'Summary ~ "{self.bug_subject}" and project = {self.project} and status != closed', 'maxresults': 1000})
 		if i is not None and "issues" in i:
 			return i["issues"]
 		else:
@@ -81,7 +84,7 @@ class JIRAHook:
 		if not matching:
 			# If one doesn't exist, create a new issue...
 			jira_key = self.jira.create_issue(
-				project='QA',
+				project=self.project,
 				title=self.bug_subject,
 				description="A build failure has occurred. Details below:\n{code}\n" + json.dumps(info, indent=4, sort_keys=True) + "\n{code}\n"
 			)
