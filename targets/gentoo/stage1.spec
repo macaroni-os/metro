@@ -139,6 +139,7 @@ else
 fi
 export PKGDIR=$ORIG_PKGDIR/new_root
 install -d ${ROOT}
+echo "Funtoo Linux $(ego profile get build)" > ${ROOT}/etc/gentoo-release
 
 # This is necessary to do prior to baselayout, as it does not create
 # /bin, /usr/bin, or the /lib(64) directories:
