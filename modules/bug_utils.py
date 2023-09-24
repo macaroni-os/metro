@@ -1,189 +1,129 @@
 #!/usr/bin/python3
 
-import urllib
-from urllib.request import urlopen
-from urllib.request import Request
-import http
-import hashlib
+import base64
+import json
+import os
+from datetime import datetime
 
 import requests
-import sys
-import json
-import base64
+
 
 def gen_base64(username, password):
-	d_b_encode = '%s:%s' % (username, password)
-	dEncode = bytes(d_b_encode,"utf-8")
-	bdEncode = base64.encodebytes(dEncode).decode("utf-8")[:-1]
-	return bdEncode
+	d_b_encode = f"{username}:{password}"
+	d_encode = bytes(d_b_encode, "utf-8")
+	b_d_encode = base64.encodebytes(d_encode).decode("utf-8")[:-1]
+	return b_d_encode
 
-class JIRA(object):
+
+class JIRA:
 
 	def __init__(self, url, user, password):
 		self.url = url
 		self.user = user
 		self.password = password
 
-	def getAuth(self):
+	def get_auth(self):
 		base64string = gen_base64(self.user, self.password)
-		return	"Basic %s" % base64string
+		return "Basic %s" % base64string
 
-	def getAllIssues(self,params={}):
+	def get_all_issues(self, params=None):
+		if params is None:
+			params = {}
 		url = self.url + '/search'
 		r = requests.get(url, params=params)
-		print(r.url)
 		if r.status_code == requests.codes.ok:
 			return r.json()
 		return None
 
-	def createIssue(self,project,title,description,issuetype="Bug",extrafields={}):
+	def create_issue(self, project, title, description, issue_type="Bug", extra_fields=None):
+		if extra_fields is None:
+			extra_fields = {}
 		url = self.url + '/issue/'
-		headers = { "Content-type": "application/json", "Accept": "application/json", "Authorization": self.getAuth() }
-		issue = { "fields" : { 
-			'project' : { 'key' : project },
-			'summary' : title,
-			'description' : description,
-			'issuetype' : { 'name' : issuetype }
-			}
+		headers = {"Content-type": "application/json", "Accept": "application/json", "Authorization": self.get_auth()}
+		issue = {"fields": {
+			'project': {'key': project},
+			'summary': title,
+			'description': description,
+			'issuetype': {'name': issue_type}
 		}
-		issue["fields"].update(extrafields)
-		print("Posting new bug.")
+		}
+		issue["fields"].update(extra_fields)
 		r = requests.post(url, data=json.dumps(issue), headers=headers)
-		print(r.status_code, r.text)
 		try:
 			j = r.json()
 		except ValueError:
 			print("createIssue: Error decoding JSON from POST. Possible connection error.")
 			return None
-		if 'key' in j:
-			return j['key']
-		return None
+		issue_key = j['key']
+		return issue_key
 
-	def createSubTask(self,parentkey,project,title,description):
-		return self.createIssue(project=project,title=title,description=description,issuetype="Sub-task",extrafields={'parent' : parentkey})
+	def create_subtask(self, parent_key, project, title, description):
+		return self.create_issue(project=project, title=title, description=description, issue_type="Sub-task", extra_fields={'parent': parent_key})
 
-	def closeIssue(self, issue, comment=None, resolution='Fixed'):
+	def close_issue(self, issue, comment=None, resolution='Fixed'):
 		url = self.url + '/issue/' + issue['key'] + '/transitions'
-		headers = { "Content-type": "application/json", "Accept": "application/json", "Authorization": self.getAuth() }
-		data = { 'update' : 
-			{ 'comment' : 
-				[ 
-					{ 'add' : { 'body' : comment or 'Closing ' + issue['key'] } } 
-				] 
-			} 
-		}
-		data['fields'] = { 'resolution' : { 'name' : resolution } }
-		data['transition'] = { 'id' :  831 }
+		headers = {"Content-type": "application/json", "Accept": "application/json", "Authorization": self.get_auth()}
+		data = {'update': {'comment':
+			[
+				{'add': {'body': comment or 'Closing ' + issue['key']}}
+			]
+		}, 'fields': {'resolution': {'name': resolution}}, 'transition': {'id': 831}}
 		r = requests.post(url, data=json.dumps(data), headers=headers)
 		if r.status_code == requests.codes.ok:
 			return True
 		else:
 			return False
 
-	def commentOnIssue(self, issue, comment):
+	def comment_on_issue(self, issue, comment):
 		url = self.url + '/issue/' + issue['key'] + '/comment'
-		headers = { "Content-type": "application/json", "Accept": "application/json", "Authorization": self.getAuth() }
-		data = { 'body' : comment }
+		headers = {"Content-type": "application/json", "Accept": "application/json", "Authorization": self.get_auth()}
+		data = {'body': comment}
 		r = requests.post(url, data=json.dumps(data), headers=headers)
 		if r.status_code == requests.codes.ok:
 			return True
 		else:
 			return False
 
+	def create_xz_build_log(self, build_log_path):
+		"""For uploading a build log to JIRA, we want to timestamp it as well as xz compress the log for space savings."""
+		date = datetime.strftime(datetime.now(), "%Y-%m-%d:%H:%M:%S")
+		for cmd in [
+			f"cp {build_log_path} /var/tmp/build-{date}.log",
+			f"xz -9 -f /var/tmp/build-{date}.log"
+		]:
+			retval = os.system(cmd)
+			if retval != 0:
+				raise SystemError(f"Command failure: {cmd}; exit value: {retval}")
+		return f"/var/tmp/build-{date}.log.xz"
 
-	def closeDuplicateIssue(self,orig_issue, dup_issue):
+	def attach_build_log_to_issue(self, issue_key, xz_log_path):
+		headers = {"Accept": "application/json", "Authorization": self.get_auth(), 'X-Atlassian-Token': 'no-check'}
+		files = [
+			('file', (os.path.basename(xz_log_path), open(xz_log_path, 'rb')))
+		]
+		url = self.url + f"/issue/{issue_key}/attachments"
+		r = requests.post(
+			url=url,
+			headers=headers,
+			files=files,
+		)
+		if r.status_code == requests.codes.ok:
+			return True
+		else:
+			return False
+
+	def close_duplicate_issue(self, orig_issue, dup_issue):
 		url = self.url + '/issue/' + dup_issue['key'] + '/transitions'
-		headers = { "Content-type": "application/json", "Accept": "application/json", "Authorization": self.getAuth() }
-		data = { 'update' : 
-			{ 'comment' : 
-				[ 
-					{ 'add' : { 'body' : 'Duplicate of %s' % orig_issue['key'] } } 
-				] 
-			} 
-		}
-		data['fields'] = { 'resolution' : { 'name' : 'Duplicate' } }
-		data['transition'] = { 'id' :  831 }
-		print(json.dumps(data))
-		print(url)
+		headers = {"Content-type": "application/json", "Accept": "application/json", "Authorization": self.get_auth()}
+		data = {'update': {'comment':
+			[
+				{'add': {'body': 'Duplicate of %s' % orig_issue['key']}}
+			]
+		}, 'fields': {'resolution': {'name': 'Duplicate'}}, 'transition': {'id': 831}}
 		r = requests.post(url, data=json.dumps(data), headers=headers)
-		print(r.text)
 		if r.status_code == requests.codes.ok:
 			return True
 		else:
 			return False
-
-class GitHub(object):
-
-	def __init__(self, user, password, org=None):
-		self.url = 'https://api.github.com'
-		self.user = user
-		self.password = password
-		self.org = org
-
-	def getAuth(self):
-		base64string = gen_base64(self.user, self.password)
-		return	"Basic %s" % base64string
-	
-	def getOrgRepositories(self):
-		url = self.url + '/orgs/%s/repos' % self.org
-		r = requests.get(url)
-		if r.status_code == requests.codes.ok:
-			out = []
-			for repo in r.json():
-				out.append(repo['full_name'])
-			return out
-		return None
-
-	def getShortRepositories(self):
-		url = self.url + '/orgs/%s/repos' % self.org
-		r = requests.get(url)
-		if r.status_code == requests.codes.ok:
-			out = []
-			for repo in r.json():
-				out.append(repo['name'])
-			return out
-		return None
-
-	def commentOnIssue(self, issue_json, comment):
-		url = issue_json['comments_url']
-		data = { 'body' : comment }
-		headers = { "Content-Type": "application/json", 'Authorization' : self.getAuth() }
-		r = requests.post(url, headers=headers, data=json.dumps(data))
-		j = r.json()
-		if 'url' in j:
-			return j['url']
-		else:
-			return None
-
-	def closeIssue(self, issue_json):
-		url = issue_json['url']
-		data = { 'state' : 'closed' }
-		headers = { "Content-Type": "application/json", 'Authorization' : self.getAuth() }
-		r = requests.post(url, headers=headers, data=json.dumps(data))
-		if r.status_code == requests.codes.ok:
-			return r.json()
-		return None
-
-class GitHubRepository(GitHub):
-
-	def __init__(self, repo, user, password, org):
-		super().__init__(user, password, org)
-		self.repo = repo
-	
-	def getAllPullRequests(self):
-		url = self.url + '/repos/%s/pulls' % self.repo
-		headers = { 'Authorization' : self.getAuth() }
-		r = requests.get(url, headers=headers)
-		if r.status_code == requests.codes.ok:
-			return r.json()
-		return None
-
-	def getAllIssues(self):
-		url = self.url + '/repos/%s/issues' % self.repo
-		headers = { 'Authorization' : self.getAuth() }
-		r = requests.get(url, headers=headers, params={'state' : 'all'})
-		if r.status_code == requests.codes.ok:
-			return r.json()
-		return None
 
 # vim: ts=4 sw=4 noet

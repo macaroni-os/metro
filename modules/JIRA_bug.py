@@ -1,85 +1,120 @@
 #!/usr/bin/env python3
 
 import json
-import datetime, os, sys, socket
+import os
+import socket
+
 from bug_utils import JIRA
 
-class JIRAHook(object):
 
-	def __init__(self, jira_url, jira_user, jira_pass, settings):
+class JIRAHook:
+
+	project = None
+
+	def __init__(self, settings):
 		self.settings = settings
+		jira_url = settings["qa/url"]
+		jira_user = settings["qa/username"]
+		jira_pass = settings["qa/password"]
+		self.project = settings["qa/project"]
 		self.jira = JIRA(jira_url, jira_user, jira_pass)
 
-	def _bugSubject(self):
-		# helper method -- return a subject for this particluar bug.
-		return "Metro QA: %s (%s) %s failure on %s" % ( self.settings["target/build"], self.settings["target/subarch"], self.settings["target"], self.hostname() )
-
-	def hostname(self):
-		return socket.gethostname()
+	@property
+	def bug_subject(self):
+		# helper method -- return a subject for this particular bug.
+		if "qa/prefix" in self.settings:
+			prefix = f"{self.settings['qa/prefix']}: "
+		else:
+			prefix = " "
+		return f"Metro: {prefix}({self.settings['target/subarch']}) {self.settings['target']} failure"
 
 	def info(self):
 		out = {}
-		for x in [ "build", "arch_desc", "subarch", "version" ]:
+		for x in ["build", "arch_desc", "subarch", "version"]:
 			k = "target/" + x
-			if self.settings.has_key(k):
+			if x in self.settings:
 				out[x] = self.settings[k]
 		if "target" in self.settings:
 			out["target"] = self.settings["target"]
-		if "path/mirror/target/path" in self.settings:
-			out["path"] = self.settings["path/mirror/target/path"]
-			err_fn = out["path"] + "/log/errors.json"
-			if os.path.exists(err_fn):
-				a = open(err_fn,"r")
-				out["failed_ebuilds"] = json.loads(a.read())
-				a.close()
-		if "success" in self.settings:
-			out["success"] = self.settings["success"]
+		out["hostname"] = socket.getfqdn()
+		out["success"] = self.settings["success"]
+		if out["success"] == "no":
+			if "path/mirror/target/path" in self.settings:
+				out["path"] = self.settings["path/mirror/target/path"]
+				err_fn = out["path"] + "/log/errors.json"
+				if os.path.exists(err_fn):
+					a = open(err_fn, "r")
+					out["failed_ebuilds"] = json.loads(a.read())
+					a.close()
+				build_log = os.path.join(out["path"], "log/build.log")
+				if os.path.exists(build_log):
+					out["build_log_attachment"] = self.jira.create_xz_build_log(build_log)
+					if "qa/fqdn" in self.settings:
+						url_path = out["path"][len(self.settings["path/mirror"]):].lstrip("/")
+						out["build_log_url"] = self.settings["qa/fqdn"] + "/" + url_path + "/log/build.log"
 		return out
 
-	def _allMatching(self):
-		i = self.jira.getAllIssues({'jql' : 'Summary ~ "\\"%s\\"" and project = QA and status != closed' % self._bugSubject(), 'maxresults' : 1000 })
-		if i != None and "issues" in i:
+	@property
+	def all_matching(self):
+		i = self.jira.get_all_issues(
+			{'jql': f'Summary ~ "{self.bug_subject}" and project = {self.project} and status != closed', 'maxresults': 1000})
+		if i is not None and "issues" in i:
 			return i["issues"]
 		else:
 			return []
 
-	def _existingBug(self):
+	@property
+	def existing_bug(self):
 		# helper method -- does an existing bug for this build failure exist?
-		return len(self._allMatching()) != 0
+		return len(self.all_matching) != 0
 
-	def onFailure(self):
-		matching = self._allMatching()
-		if not matching:
-			print("no matching issues... creating one.")
-			# If one doesn't exist, create a new issue...
-			jira_key = self.jira.createIssue(
-				project='QA',
-				title= self._bugSubject(),
-				description="A build failure has occurred. Details below:\n{code}\n" +
-				json.dumps(self.info(), indent=4, sort_keys=True) + "\n{code}\n"
-			)
-			print(jira_key)
+	def on_failure(self):
+		matching = self.all_matching
+		info = self.info()
+
+		# Do final fix-up of the info dict:
+		jira_key = None
+		if "build_log_attachment" in info:
+			build_log_attachment = info["build_log_attachment"]
+			info["build_log_attachment"] = os.path.basename(info["build_log_attachment"])
 		else:
-			print("found a matching issue.")
-			# Update comment with new build failure info, to avoid creating a brand new bug.
-			for match in matching:
-				print("processing issue (comment)")
-				self.jira.commentOnIssue(match,"Another build failure has occurred. Details below:\n{code}\n" + 
-					json.dumps(self.info(), indent=4, sort_keys=True) + "\n{code}\n"
-				)
+			build_log_attachment = None
 
-	def onSuccess(self):
-		for i in self._allMatching():
-			print("Closing matching issue %s" % i['key'])	
-			self.jira.commentOnIssue(i,"Build completed successfully. Closing. Details below:\n{code}\n" +
-				json.dumps(self.info(), indent=4, sort_keys=True) + "\n{code}\n"
+		# Now create or add to an issue:
+		if not matching:
+			# If one doesn't exist, create a new issue...
+			jira_key = self.jira.create_issue(
+				project=self.project,
+				title=self.bug_subject,
+				description="A build failure has occurred. Details below:\n{code}\n" + json.dumps(info, indent=4, sort_keys=True) + "\n{code}\n"
 			)
-			self.jira.closeIssue(i)
+			print(f"Created issue {jira_key}")
+		else:
+			# Update comment with new build failure info, to avoid creating a brand-new bug.
+			for match in matching:
+				self.jira.comment_on_issue(
+					match,
+					"Another build failure has occurred. Details below:\n{code}\n" + json.dumps(info, indent=4, sort_keys=True) + "\n{code}\n"
+				)
+				jira_key = match["key"]
+				break
+		if build_log_attachment:
+			self.jira.attach_build_log_to_issue(jira_key, build_log_attachment)
+			os.unlink(build_log_attachment)
+
+	def on_success(self):
+		for i in self.all_matching:
+			print("Closing matching issue %s" % i['key'])
+			self.jira.comment_on_issue(
+				i,
+				"Build completed successfully. Closing. Details below:\n{code}\n" + json.dumps(self.info(), indent=4, sort_keys=True) + "\n{code}\n"
+			)
+			self.jira.close_issue(i)
 
 	def run(self):
 		if self.settings["success"] == "yes":
-			return self.onSuccess()
+			return self.on_success()
 		else:
-			return self.onFailure()
+			return self.on_failure()
 
 # vim: ts=4 sw=4 noet

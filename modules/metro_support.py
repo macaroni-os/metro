@@ -4,10 +4,13 @@ import grp
 import json
 import os
 import pwd
+import shutil
 import subprocess
 import sys
 import time
 from importlib import import_module
+
+from flexdata import Collection
 
 
 def ismount(path):
@@ -56,7 +59,7 @@ class MetroSetup(object):
 
 		if self.verbose:
 			print("Using main configuration file %s.\n" % self.configfile)
-		settings = self.flexdata.collection(self.debug)
+		settings = self.flexdata.Collection(self.debug)
 
 		if os.path.exists(self.configfile):
 			settings.collect(self.configfile, None)
@@ -75,18 +78,19 @@ class MetroSetup(object):
 		if extraargs:
 			for arg in list(extraargs.keys()):
 				settings[arg] = extraargs[arg]
-		settings.runCollector()
+		settings.run_collector()
 		if settings["portage/MAKEOPTS"] == "auto":
 			settings["portage/MAKEOPTS"] = "-j%s" % (int(subprocess.getoutput("nproc --all")) + 1)
 
 		return settings
 
 
-class CommandRunner(object):
+class CommandRunner:
 
-	"""CommandRunner is a class that allows commands to run, and messages to be displayed. By default, output will go to a log file. Messages will appear on stdout and in the logs."""
+	"""CommandRunner is a class that allows commands to run, and messages to be displayed. By default, output will go to a log file.
+	Messages will appear on stdout and in the logs."""
 
-	def __init__(self, settings=None, logging=True):
+	def __init__(self, settings: Collection = None, logging=True):
 		self.settings = settings
 		self.logging = logging
 		if self.settings and self.logging:
@@ -94,7 +98,10 @@ class CommandRunner(object):
 			if not os.path.exists(os.path.dirname(self.fname)):
 				# create output directory for logs
 				self.logging = False
-				self.run(["install", "-o", self.settings["path/mirror/owner"], "-g", self.settings["path/mirror/group"], "-m", self.settings["path/mirror/dirmode"], "-d", os.path.dirname(self.fname)], {})
+				self.run(
+					["install", "-o", self.settings["path/mirror/owner"], "-g", self.settings["path/mirror/group"], "-m",
+					self.settings["path/mirror/dirmode"], "-d", os.path.dirname(self.fname)], {}
+				)
 				self.logging = True
 			self.cmdout = open(self.fname, "w+")
 			# set logfile ownership:
@@ -106,6 +113,57 @@ class CommandRunner(object):
 			self.cmdout.write(msg + "\n")
 			self.cmdout.flush()
 		sys.stdout.write(msg + "\n")
+
+	def extract_build_log_path(self):
+		"""
+		Scan metro build log and extract the full path to the build.log of the failed package.
+		"""
+		prefix = " * The complete build log is located at "
+		s, out = subprocess.getstatusoutput(
+			f'tac {self.fname} | grep -m 1 -E "^ \\* The complete build log is located at"'
+		)
+		if s != 0:
+			raise SystemError("Couldn't run tac on build log.")
+		line = out.strip()
+		line = line[len(prefix):]
+		if line.endswith("."):
+			line = line[:-1]
+		line = line.strip("'")
+		line = line.lstrip("/")
+		full_build_log_path = os.path.join(self.settings["path/work"], line)
+		# Copy the found build.log, so it sits next to errors.json in the metro logs dir:
+		shutil.copy(full_build_log_path, os.path.join(self.settings["path/mirror/target/path"], "log/build.log"))
+
+	def extract_build_log_catpkg(self):
+		"""
+		Scan metro build log and extract the actual package the failed, along with associated metadata.
+		"""
+		s, out = subprocess.getstatusoutput(
+			f'cat {self.fname} | grep "^ \\* ERROR: " | sort -u | sed -e \'s/^ \\* ERROR: \\(.*\\) failed (\\(.*\\) phase).*/\\1 \\2/g\'')
+		if s == 0:
+			errors = []
+			for line in out.split('\n'):
+				parts = line.split()
+				if len(parts) != 2:
+					# not what we're looking for
+					continue
+				if len(parts[0].split("/")) != 2:
+					continue
+				errors.append({"ebuild": parts[0], "phase": parts[1]})
+			if len(errors):
+				fname = os.path.join(self.settings["path/mirror/target/path"], "log/errors.json")
+				self.mesg("Detected failed ebuilds... writing to %s." % fname)
+				a = open(fname, "w")
+				a.write(json.dumps(errors, indent=4))
+				a.close()
+
+	def do_error_scan(self):
+		# scan log for errors -- and extract them!
+		self.mesg("Attempting to extract failed ebuild information...")
+		if self.cmdout:
+			self.cmdout.flush()
+		self.extract_build_log_catpkg()
+		self.extract_build_log_path()
 
 	def run(self, cmdargs, env, error_scan=False):
 		self.mesg("Running command: %s (env %s) " % (cmdargs, env))
@@ -124,33 +182,11 @@ class CommandRunner(object):
 			if exitcode != 0:
 				self.mesg("Command exited with return code %s" % exitcode)
 				if error_scan and self.logging:
-					# scan log for errors -- and extract them!
-					self.mesg("Attempting to extract failed ebuild information...")
-					if self.cmdout:
-						self.cmdout.flush()
-					s, out = subprocess.getstatusoutput('cat %s | grep "^ \\* ERROR: " | sort -u | sed -e \'s/^ \\* ERROR: \\(.*\\) failed (\\(.*\\) phase).*/\\1 \\2/g\'' % self.fname)
-					if s == 0:
-						errors = []
-						for line in out.split('\n'):
-							print("Processing line", line)
-							parts = line.split()
-							if len(parts) != 2:
-								# not what we're looking for
-								continue
-							if len(parts[0].split("/")) != 2:
-								continue
-							errors.append({"ebuild": parts[0], "phase": parts[1]})
-						if len(errors):
-							fname = self.settings["path/mirror/target/path"] + "/log/errors.json"
-							self.mesg("Detected failed ebuilds... writing to %s." % fname)
-							a = open(fname, "w")
-							a.write(json.dumps(errors, indent=4))
-							a.close()
-				return exitcode
-			return 0
+					self.do_error_scan()
+			return exitcode
 
 
-class StampFile(object):
+class StampFile:
 
 	def __init__(self, path):
 		self.path = path
@@ -186,16 +222,14 @@ class StampFile(object):
 			return False
 		return True
 
-		def exists(self):
-			return False
-
 	def gen_file_contents(self):
 		return ""
+
 
 class LockFile(StampFile):
 
 	"""Class to create lock files; used for tracking in-progress metro builds."""
-		
+
 	def __init__(self, path):
 		super().__init__(path)
 		self.hostname = subprocess.getoutput("/bin/hostname")
@@ -276,7 +310,7 @@ class LockFile(StampFile):
 		super().unlink()
 
 	def unlink(self, force=False):
-		"""only unlink if *we* (hostname, pid) created the file. Otherwise leave alone."""
+		"""only unlink if *we* (hostname, pid) created the file. Otherwise, leave alone."""
 		do_unlink = False
 		if os.path.exists(self.path):
 			if not self.created_by_this_host:

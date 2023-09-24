@@ -13,16 +13,16 @@ class FlexDataError(Exception):
 			print()
 
 
-class collection:
+class Collection:
 	""" The collection class holds our parser.
 
 	__init__() contains several important variable definitions.
 
-	self.immutable - if set to true, the parser will throw a warning if a variable is redefined. Otherwise it will not.
+	self.immutable - if set to true, the parser will throw a warning if a variable is redefined. Otherwise, it will not.
 	This variable can be toggled at any time, so a collection can start out in a mutable state and then be switched to
 	immutable for parsing of additional files.
 
-	self.lax = the "lax" option, if True, will allow for a undefined single-line variable to expand to the empty string.
+	self.lax = the "lax" option, if True, will allow for an undefined single-line variable to expand to the empty string.
 	If lax is False, then the parser will throw an exception if an undefined single-line variable is expanded.
 
 	"""
@@ -35,47 +35,50 @@ class collection:
 		self.immutable = False
 		# lax means: if a key isn't found, pretend it exists but return the empty string.
 		self.lax = False
-		self.laxvars = {}
+		self.lax_vars = {}
 		self.blanks = {}
 		# self.collected holds the names of files we've collected (parsed)
 		self.collected = []
 		self.section = ""
-		self.sectionfor = {}
+		self.section_for = {}
 		self.conditional = None
 		self.collector = []
-		self.collectorcond = {}
+		self.collector_cond = {}
+		self.raw = {}
+		self.conditionals = {}
+		self.defined_in_file = {}
 
 	def clear(self):
 		self.raw = {}
 		self.conditionals = {}
 		self.blanks = {}
-		self.definedinfile = {}
+		self.defined_in_file = {}
 
 	def expand_all(self):
 		# try to expand all variables to find any undefined elements, to record all blanks or throw an exception
 		for key in list(self.keys()):
-			myvar = self[key]
+			assert self[key]
 
 	def get_condition_for(self, varname):
 		if varname not in self.conditionals:
 			return None
-		truekeys = []
+		true_keys = []
 		for cond in list(self.conditionals[varname].keys()):
-			# if self.conditionOnConditional(cond):
-			#	raise FlexDataError, "Not Allowed: conditional variable %s depends on condition %s which is itself a conditional variable." % ( varname, cond )
-			if self.conditionTrue(cond):
-				truekeys.append(cond)
-			if len(truekeys) > 1:
-				raise FlexDataError("Multiple true conditions exist for %s: conditions: %s" % (varname, repr(truekeys)))
-		if len(truekeys) == 1:
-			return self.conditionals[varname][truekeys[0]]
-		elif len(truekeys) == 0:
+			if self.condition_true(cond):
+				true_keys.append(cond)
+			if len(true_keys) > 1:
+				raise FlexDataError("Multiple true conditions exist for %s: conditions: %s" % (varname, repr(true_keys)))
+		if len(true_keys) == 1:
+			return self.conditionals[varname][true_keys[0]]
+		elif len(true_keys) == 0:
 			return None
 		else:
 			# shouldn't get here
 			raise FlexDataError
 
-	def expand(self, myvar, options={}):
+	def expand(self, myvar, options=None):
+		if options is None:
+			options = {}
 		if myvar[-1] == "?":
 			boolean = True
 			myvar = myvar[:-1]
@@ -87,7 +90,7 @@ class collection:
 			# test the type of the first conditional - in the future, we should ensure all conditional values are of the same type
 			typetest = self.conditionals[myvar][list(self.conditionals[myvar].keys())[0]]
 		# FIXME: COME BACK HERE AND FIX THIS
-		elif myvar in self.laxvars and self.laxvars[myvar]:
+		elif myvar in self.lax_vars and self.lax_vars[myvar]:
 			# record that we looked up an undefined element
 			self.blanks[myvar] = True
 			if boolean:
@@ -103,12 +106,16 @@ class collection:
 			if boolean:
 				return "yes"
 			else:
-				return self.expandMulti(myvar, options=options)
+				return self.expand_multi(myvar, options=options)
 		else:
-			return self.expandString(myvar=myvar, options=options)
+			return self.expand_string(myvar=myvar, options=options)
 
-	def expandString(self, mystring=None, myvar=None, stack=[], options={}):
+	def expand_string(self, mystring=None, myvar=None, stack=None, options=None):
 		# Expand all variables in a basic value, ie. a string
+		if stack is None:
+			stack = []
+		if options is None:
+			options = {}
 		if mystring is None:
 			if myvar[-1] == "?":
 				boolean = True
@@ -129,18 +136,12 @@ class collection:
 				if mystring is None:
 					if boolean:
 						mystring = "no"
-					elif len(stack) and stack[-1] in self.laxvars and self.laxvars[stack[-1]]:
+					elif len(stack) and stack[-1] in self.lax_vars and self.lax_vars[stack[-1]]:
 						mystring = ""
 					else:
 						raise KeyError("Variable " + repr(myvar) + " not found.")
 				elif boolean:
 					mystring = "yes"
-
-		# if type(string) != types.StringType:
-		#		if len(stack) >=1:
-		#		raise FlexDataError("expandString received non-string when expanding "+repr(myvar)+" ( stack = "+repr(stack)+")")
-		#	else:
-		#		raise FlexDataError("expandString received non-string: %s" % repr(string) )
 
 		if type(mystring) != list:
 			mysplit = mystring.strip().split(" ")
@@ -167,8 +168,8 @@ class collection:
 				unex = ""
 				continue
 			if unex[varpos:varpos + len(self.pre) + 1] == "$[[":
-				# extra [, so it's a multi-line element .... which we just pass to the output unexpanded since it might be comented out...
-				# (we don't want to throw an exception if someone put a # in front of it.
+				# extra "[", so it's a multi-line element .... which we just pass to the output unexpanded since it might be commented out...
+				# (we don't want to throw an exception if someone put a # in front of it.)
 				ex += unex[0:varpos + len(self.pre) + 1]
 				unex = unex[varpos + len(self.pre) + 1:]
 				continue
@@ -186,15 +187,15 @@ class collection:
 				boolean = False
 			# $[] and $[:] expansion
 			if varname == "" or varname == ":":
-				if myvar in self.sectionfor:
-					varname = self.sectionfor[myvar]
+				if myvar in self.section_for:
+					varname = self.section_for[myvar]
 				else:
 					raise FlexDataError("no section name for " + myvar + " in " + mystring)
 			# NEW STUFF BELOW:
 			elif varname[0] == ":":
 				# something like $[:foo/bar]
-				if myvar in self.sectionfor:
-					varname = self.sectionfor[myvar] + "/" + varname[1:]
+				if myvar in self.section_for:
+					varname = self.section_for[myvar] + "/" + varname[1:]
 				else:
 					raise FlexDataError("no section name for " + myvar + " in " + mystring)
 			varsplit = varname.split(":")
@@ -217,35 +218,32 @@ class collection:
 			if varname in stack:
 				raise KeyError("Circular reference of '" + varname + "' by " + repr(myvar) + " ( Call stack: " + repr(stack) + ' )')
 			if varname in self.raw:
-				# if myvar == None, we are being called from self.expand_all() and we don't care where we are being expanded from
-				# if myvar != None and type(self.raw[varname]) == types.ListType:
-				#	raise FlexDataError,"Trying to expand multi-line value "+repr(varname)+" in single-line value "+repr(myvar)
-				newstack = stack[:]
-				newstack.append(myvar)
+				new_stack = stack[:]
+				new_stack.append(myvar)
 				if not boolean:
-					newex = self.expandString(self.raw[varname], varname, newstack, options=newoptions)
-					if newex == "" and zapmode == True:
-						# when expandMulti gets None, it won't add this line so we won't get a blank line even
+					newex = self.expand_string(self.raw[varname], varname, new_stack, options=newoptions)
+					if newex == "" and zapmode is True:
+						# when expand_multi gets None, it won't add this line, so we won't get a blank line even
 						return None
 					else:
-						if newex != None:
+						if newex is not None:
 							ex += newex
 						else:
 							return None
 				else:
-					# self.raw[varname] can be a list .. if it's a string and blank, we treat it as undefined.
+					# self.raw[varname] can be a list. if it's a string and blank, we treat it as undefined.
 					if type(self.raw[varname]) == bytes and self.raw[varname].strip() == "":
 						ex += "no"
 					else:
 						ex += "yes"
 			elif varname in self.conditionals:
-				expandme = self.get_condition_for(varname)
-				newstack = stack[:]
-				newstack.append(myvar)
-				if expandme == None:
-					raise KeyError("Variable %s not found (stack: %s )" % (varname, repr(newstack)))
+				expand_me = self.get_condition_for(varname)
+				new_stack = stack[:]
+				new_stack.append(myvar)
+				if expand_me is None:
+					raise KeyError("Variable %s not found (stack: %s )" % (varname, repr(new_stack)))
 				if not boolean:
-					ex += self.expandString(expandme, varname, newstack, options=newoptions)
+					ex += self.expand_string(expand_me, varname, new_stack, options=newoptions)
 				else:
 					ex += "yes"
 			else:
@@ -253,7 +251,7 @@ class collection:
 					# a ":zap" will cause the line to be deleted if there is no variable defined or the var evals to an empty string
 					# when expandMulti gets None, it won't add this line so we won't get a blank line even
 					return None
-				if ("lax" in list(newoptions.keys())) or (len(stack) and stack[-1] in self.laxvars and self.laxvars[stack[-1]]):
+				if ("lax" in list(newoptions.keys())) or (len(stack) and stack[-1] in self.lax_vars and self.lax_vars[stack[-1]]):
 					# record variables that we attempted to expand but were blank, so we can inform the user of possible bugs
 					if boolean:
 						ex += "no"
@@ -272,7 +270,11 @@ class collection:
 		with open(ex, "r") as myfile:
 			return myfile.read().strip()
 
-	def expandMulti(self, myvar, stack=[], options={}):
+	def expand_multi(self, myvar, stack=None, options=None):
+		if stack is None:
+			stack = []
+		if options is None:
+			options = {}
 		# TODO: ADD BOOLEAN SUPPORT HERE - NOT DONE YET
 		mylocals = {}
 		myvarsplit = myvar.split(":")
@@ -294,8 +296,8 @@ class collection:
 				raise FlexDataError("expandMulti received non-multi")
 		else:
 			multi = self.get_condition_for(myvar)
-			if multi == None:
-				if ("lax" in list(newoptions.keys())) or (len(stack) and stack[-1] in self.laxvars and self.laxvars[stack[-1]]):
+			if multi is None:
+				if ("lax" in list(newoptions.keys())) or (len(stack) and stack[-1] in self.lax_vars and self.lax_vars[stack[-1]]):
 					self.blanks[myvar] = True
 					return ""
 				else:
@@ -306,18 +308,18 @@ class collection:
 		while pos < len(multi):
 			mystrip = multi[pos].strip()
 			mysplit = mystrip.split(" ")
-			if len(mysplit) > 0 and len(mysplit) < 3 and mystrip[0:3] == "$[[" and mystrip[-2:] == "]]":
+			if 0 < len(mysplit) < 3 and mystrip[0:3] == "$[[" and mystrip[-2:] == "]]":
 				myref = mystrip[3:-2]
 				if myref in stack:
 					raise FlexDataError("Circular reference of '" + myref + "' by '" + stack[-1] + "' ( Call stack: " + repr(stack) + ' )')
 				newstack = stack[:]
 				newstack.append(myvar)
-				newlines += self.expandMulti(self.expandString(mystring=myref), newstack, options=newoptions)
+				newlines += self.expand_multi(self.expand_string(mystring=myref), newstack, options=newoptions)
 			elif len(mysplit) >= 1 and mysplit[0] == "<?python":
 				sys.stdout = io.StringIO()
 				mycode = ""
 				pos += 1
-				while (pos < len(multi)):
+				while pos < len(multi):
 					newsplit = multi[pos].split()
 					if len(newsplit) >= 1 and newsplit[0] == "?>":
 						break
@@ -328,8 +330,8 @@ class collection:
 				newlines.append(sys.stdout.getvalue())
 				sys.stdout = sys.__stdout__
 			else:
-				newline = self.expandString(mystring=multi[pos], options=newoptions)
-				if newline != None:
+				newline = self.expand_string(mystring=multi[pos], options=newoptions)
+				if newline is not None:
 					newlines.append(newline)
 			pos += 1
 		return newlines
@@ -338,27 +340,27 @@ class collection:
 		if self.immutable and key in self.raw:
 			raise IndexError("Attempting to redefine " + key + " to " + value + " when immutable.")
 		self.raw[key] = value
-		self.definedinfile[key] = "via __setitem__"
+		self.defined_in_file[key] = "via __setitem__"
 
 	def __delitem__(self, key):
 		if self.immutable and key in self.raw:
 			raise IndexError("Attempting to delete " + key + " when immutable.")
 		del self.raw[key]
-		if key in self.definedinfile:
-			del self.definedinfile[key]
+		if key in self.defined_in_file:
+			del self.defined_in_file[key]
 
 	def __getitem__(self, element):
 		return self.expand(element)
 
-	def __contains__(self, element):
-		return self.has_key(element)
-
 	def has_key(self, key):
+		return self.__contains__(key)
+
+	def __contains__(self, key):
 		if key in self.raw:
 			return True
 		else:
 			ret = self.get_condition_for(key)
-		if ret != None:
+		if ret is not None:
 			return True
 		else:
 			return False
@@ -367,7 +369,7 @@ class collection:
 		mylist = list(self.raw.keys())
 		for x in self.conditionals:
 			mycond = self.get_condition_for(x)
-			if mycond != None:
+			if mycond is not None:
 				mylist.append(x)
 		return mylist
 
@@ -379,7 +381,7 @@ class collection:
 				missing.append(key)
 		return missing
 
-	def skipblock(self, openfile=None):
+	def skip_block(self, openfile=None):
 		while 1:
 			curline = openfile.readline()
 			mysplit = curline[:-1].strip().split(" ")
@@ -390,7 +392,7 @@ class collection:
 			else:
 				continue
 
-	def parseline(self, filename, openfile=None, origfile=None, dups=False):
+	def parseline(self, filename, openfile=None, dups=False):
 
 		# parseline() will parse a line and return None on EOF, return [] on a blank line with no data, or will
 		# return a list of string elements if there is data on the line, split along whitespace: [ "foo:", "bar", "oni" ]
@@ -433,8 +435,8 @@ class collection:
 			myvar = mysplit[0][:-1]
 			if self.section:
 				myvar = self.section + "/" + myvar
-				self.sectionfor[myvar] = self.section
-			self.laxvars[myvar] = self.lax
+				self.section_for[myvar] = self.section
+			self.lax_vars[myvar] = self.lax
 			mylines = []
 			while 1:
 				curline = openfile.readline()
@@ -451,13 +453,13 @@ class collection:
 							raise FlexDataError("Conditional element %s already defined for condition %s" % (myvar, self.conditional))
 						self.conditionals[myvar][self.conditional] = mylines
 					elif not dups and myvar in self.raw:
-						if self.definedinfile[myvar] == filename:
+						if self.defined_in_file[myvar] == filename:
 							raise FlexDataError("Error - file %s was already collected, duplicate definitions." % filename)
 						else:
-							raise FlexDataError("Error - in parsing %s: \"%s\" already defined in %s" % (filename, myvar, self.definedinfile[myvar]))
+							raise FlexDataError("Error - in parsing %s: \"%s\" already defined in %s" % (filename, myvar, self.defined_in_file[myvar]))
 					else:
 						self.raw[myvar] = mylines
-						self.definedinfile[myvar] = filename
+						self.defined_in_file[myvar] = filename
 					break
 				else:
 					# append new line
@@ -497,13 +499,13 @@ class collection:
 					# This part of the code handles a [collect] annotation that appears inside a [when] block - we use the [when] condition in this case
 					if len(mysection) >= 3:
 						raise FlexDataError("Conditional collect annotations not allowed inside \"when\" annotations: %s" % repr(mysection))
-					self.collectorcond[mysection[1]] = self.conditional
+					self.collector_cond[mysection[1]] = self.conditional
 					# append what to collect, followed by the filename that the collect annotation appeared in. We will use this later, for
 					# expanding relative paths.
 					self.collector.append([mysection[1], filename]),
 				elif len(mysection) > 3:
 					if mysection[2] == "when":
-						self.collectorcond[mysection[1]] = " ".join(mysection[3:])
+						self.collector_cond[mysection[1]] = " ".join(mysection[3:])
 						# even with a conditional, we still put the thing on the main collector list:
 						self.collector.append([mysection[1], filename])
 					# self.collector.append(mysection[1])
@@ -523,8 +525,8 @@ class collection:
 				mykey = self.section
 			elif self.section:
 				mykey = self.section + "/" + mykey
-				self.sectionfor[mykey] = self.section
-			self.laxvars[mykey] = self.lax
+				self.section_for[mykey] = self.section
+			self.lax_vars[mykey] = self.lax
 			myvalue = " ".join(mysplit[1:])
 			if self.conditional:
 				if mykey not in self.conditionals:
@@ -551,7 +553,7 @@ class collection:
 		self.section = ""
 		while 1:
 			out = self.parseline(filename, openfile)
-			if out == None:
+			if out is None:
 				break
 		openfile.close()
 		# add to our list of parsed files
@@ -559,9 +561,9 @@ class collection:
 			sys.stdout.write("Debug: collected: %s\n" % os.path.normpath(filename))
 		self.collected.append(os.path.normpath(filename))
 
-	def conditionOnConditional(self, cond):
+	def condition_on_conditional(self, cond):
 		"""defining a conditial var based on another conditional var is illegal. This function will tell us if we are in this mess."""
-		if cond == None:
+		if cond is None:
 			return False
 		cond = cond.split()
 		if len(cond) == 1:
@@ -585,7 +587,7 @@ class collection:
 				# undefined
 				return False
 
-	def conditionTrue(self, cond):
+	def condition_true(self, cond):
 		cond = cond.split()
 		if len(cond) == 1:
 			if cond[0] in self.raw:
@@ -606,7 +608,7 @@ class collection:
 		else:
 			raise FlexDataError("Invalid condition")
 
-	def runCollector(self):
+	def run_collector(self):
 		# BUG? we may need to have an expandString option that will disable the ability to go to the evaluated dict,
 		# because as we parse new files, we have new data and some "lax" evals may evaluate correctly now.
 
@@ -623,18 +625,18 @@ class collection:
 				myitem, origfile = self.collector[0]
 			except ValueError:
 				raise FlexDataError(repr(self.collector[0]) + " does not appear to be good")
-			if myitem in self.collectorcond:
-				cond = self.collectorcond[myitem]
-				if self.conditionOnConditional(cond):
-					raise FlexDataError("Collect annotation %s has conditional %s that references a conditional variable, which is not allowed." % (myitem, cond))
-				# is the condition true?:
-				if not self.conditionTrue(cond):
+			if myitem in self.collector_cond:
+				cond = self.collector_cond[myitem]
+				if self.condition_on_conditional(cond):
+					raise FlexDataError(f"Collect annotation {myitem} has conditional {cond} that references a conditional variable, which is not allowed.")
+					# is the condition true?:
+				if not self.condition_true(cond):
 					contfails += 1
 					self.collector = self.collector[1:] + [self.collector[0]]
 					continue
 				else:
 					try:
-						myexpand = self.expandString(mystring=myitem)
+						myexpand = self.expand_string(mystring=myitem)
 					except KeyError:
 						contfails += 1
 						self.collector = self.collector[1:] + [self.collector[0]]
@@ -644,7 +646,7 @@ class collection:
 					contfails = 0
 			else:
 				try:
-					myexpand = self.expandString(mystring=myitem)
+					myexpand = self.expand_string(mystring=myitem)
 				except KeyError:
 					contfails += 1
 					# move failed item to back of list
@@ -659,16 +661,5 @@ class collection:
 				# reset continuous fail counter, we are making progress:
 				contfails = 0
 		self.lax = oldlax
-	# leftovers are ones that had false conditions, so we don't want to raise an exception:
-	# if len(self.collector) != 0:
-	#	raise FlexDataError, "Unable to collect all files - uncollected are: "+repr(self.collector)
-
-
-if __name__ == "__main__":
-	coll = collection(debug=False)
-	for arg in sys.argv[1:]:
-		coll.collect(arg)
-	coll.runCollector()
-	sys.exit(0)
 
 # vim: ts=4 sw=4 noet
