@@ -146,8 +146,11 @@ echo "Funtoo Linux $(ego profile get build)" > ${ROOT}/etc/gentoo-release
 #
 # work around an issue where split-usr is being unset.
 export USE="split-usr"
-install -m 0755 -d $ROOT/usr/bin
-install -m 0755 -d $ROOT/bin
+# TODO: add these to baselayout:
+install -m 0755 -d $ROOT/usr/bin $ROOT/bin $ROOT/var $ROOT/var/empty $ROOT/var/cache $ROOT/var/db $ROOT/var/lib
+install -m 1777 -d $ROOT/var/tmp $ROOT/tmp
+install -m 0755 -d $ROOT/run
+ln -s /run $ROOT/var/run
 arch_desc="$[target/arch_desc]"
 if [ "${arch_desc/-64bit//}" != "${arch_desc}" ]; then
 	install -m 0755 -d $ROOT/lib64
