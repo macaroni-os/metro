@@ -17,7 +17,7 @@ else
 fi
 
 # use python3
-a=$(eselect python list | sed -n -e '1d' -e 's/^.* \(python[3]\..\).*$/\1/g' -e '/python3/p')
+a=$(eselect python list | sed -E -n -e '1d' -e 's/^.* (python3\.[[:digit:]]+).*$/\1/g' -e '/python3/p' | head -n1)
 if [ "$a" != "" ]
 then
 	eselect python set $a
