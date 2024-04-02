@@ -19,6 +19,8 @@ for y in mdadm lvm2 cryptsetup; do
     emerge -C sys-fs/$y
 done
 
+emerge -C sys-boot/grub
+
 if [ -e $TMPDIR/etc/conf.d/rc ]
 then
 	echo "You appear to be using a Gentoo (non-OpenRC) stage. This target only supports"
