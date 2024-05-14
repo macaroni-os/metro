@@ -79,10 +79,6 @@ pyver=${pyver:0:1}
 # pyver is now set to major version of specified python in metro config. The version specified in
 # metro config is the "default" version enabled for the system.
 
-# when we have python3 as a default, we'll want to enable something like this (conditional):
-#if [ "$pyver" == "2" ]; then
-emerge -u =dev-lang/python-2*
-#fi
 emerge -u =dev-lang/python-3* || die
 latest_python3=$(eselect python list --python3 | sed -ne '/python/s/.*\(python.*\)$/\1/p' | sort | tail -n 1)
 latest_python3=python-${latest_python3:6:3}
