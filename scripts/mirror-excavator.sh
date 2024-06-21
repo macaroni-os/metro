@@ -9,7 +9,7 @@ else
 	echo "Mirroring $mp..."
 fi
 EXTRA_EXCLUDES="--exclude=selinux* --exclude=*2022-* --delete-excluded"
-EXCLUDES="--exclude *.cme --exclude *.cme.run --exclude *.progress --exclude stage1*.tar* --exclude stage2*.tar*"
+EXCLUDES="--exclude *.cme.run --exclude *.progress --exclude stage1*.tar* --exclude stage2*.tar*"
 #Let 172.19.1.20 compress and index these...
 #$mp/../metro/scripts/buildrepo index.xml
 #$mp/../metro/scripts/indexr.py $mp
