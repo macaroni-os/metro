@@ -8,8 +8,9 @@ if [ -z "$mp" ]; then
 else
 	echo "Mirroring $mp..."
 fi
+LAST_YEAR=$( date +%Y -d "-1 years" )
 EXTRA_EXCLUDES="--exclude=selinux* --exclude=*2019-* --delete-excluded"
-EXCLUDES="--exclude *.cme --exclude *.cme.run --exclude *.progress --exclude stage1*.tar* --exclude stage2*.tar* --exclude *.tar"
+EXCLUDES="--exclude .* --exclude *.cme --exclude *.cme.run --exclude *.progress --exclude stage1*.tar* --exclude stage2*.tar* --exclude *.tar --exclude=*-${LAST_YEAR}-*.tar.xz"
 $mp/../metro/scripts/buildrepo index.xml
 $mp/../metro/scripts/indexr.py $mp
 if [ "$method" == "rclone" ]; then
