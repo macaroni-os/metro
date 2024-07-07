@@ -8,12 +8,12 @@ if [ -z "$mp" ]; then
 else
 	echo "Mirroring $mp..."
 fi
-EXTRA_EXCLUDES="--exclude=selinux* --exclude=*2022-* --delete-excluded"
+EXTRA_EXCLUDES="--exclude=selinux* --exclude=*2023-* --delete-excluded"
 EXCLUDES="--exclude *.cme.run --exclude *.progress --exclude stage1*.tar* --exclude stage2*.tar*"
 #Let 172.19.1.20 compress and index these...
 #$mp/../metro/scripts/buildrepo index.xml
 #$mp/../metro/scripts/indexr.py $mp
 for x in amd64-bulldozer amd64-excavator amd64-steamroller amd64-piledriver amd64-k10; do
 	dest=next/x86-64bit/$x
-	rsync -azve ssh --delete $mp/$dest/ root@172.19.1.20:/home/mirror/funtoo/$dest $EXCLUDES $EXTRA_EXCLUDES --progress --stats
+	rsync -azve ssh --zc zstd --zl 6 --delete $mp/$dest/ root@172.19.1.20:/home/mirror/funtoo/$dest $EXCLUDES $EXTRA_EXCLUDES --progress --stats
 done
