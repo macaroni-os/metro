@@ -18,6 +18,14 @@ sys.path.append(os.path.join(script_dir, "../modules"))
 
 from metro_support import MetroSetup
 
+EGO_GIT_URL = os.environ.get(
+	'EGO_GIT_URL',
+	"https://github.com/macaroni-os/ego.git"
+)
+TARBALL_BUILD_HOST = os.environ.get(
+	'METRO_BUILD_TARBALLS_HOST',
+	"https://build.funtoo.org"
+)
 
 def path_inside(path: Path, base: Path):
 	"""
@@ -218,7 +226,7 @@ class LiveBuildSelector:
 
 	@sorted_list
 	def releases(self):
-		for link in get_http_dirs("https://build.funtoo.org"):
+		for link in get_http_dirs(f"{TARBALL_BUILD_HOST}/"):
 			link = str(link)
 			if not link.endswith("/"):
 				continue
@@ -231,7 +239,7 @@ class LiveBuildSelector:
 
 	@sorted_list
 	def arches(self, release):
-		for link in get_http_dirs(f"https://build.funtoo.org/{release}"):
+		for link in get_http_dirs(f"{TARBALL_BUILD_HOST}/{release}"):
 			link = str(link)
 			if not link.endswith("/"):
 				continue
@@ -241,7 +249,7 @@ class LiveBuildSelector:
 
 	@sorted_list
 	def subarches(self, release, arch):
-		for link in get_http_dirs(f"https://build.funtoo.org/{release}/{arch}"):
+		for link in get_http_dirs(f"{TARBALL_BUILD_HOST}/{release}/{arch}"):
 			link = str(link)
 			if not link.endswith("/"):
 				continue
@@ -249,7 +257,7 @@ class LiveBuildSelector:
 
 	def latest_build(self, release, arch, subarch):
 		builds = []
-		for build in get_http_dirs(f"https://build.funtoo.org/{release}/{arch}/{subarch}"):
+		for build in get_http_dirs(f"{TARBALL_BUILD_HOST}/{release}/{arch}/{subarch}"):
 			if not re.fullmatch(r"^\d{4}-\d{2}-\d{2}/$", build):
 				continue
 			builds.append(build)
@@ -385,14 +393,14 @@ def main():
 		if out_path.exists():
 			print(f"warning: {out_path} appears to already exist. Skipping fetch.")
 		else:
-			retval = os.system(f"wget https://build.funtoo.org/{release}/{arch}/{subarch}/{latest_build}/{archive} -O {out_path}")
+			retval = os.system(f"wget {TARBALL_BUILD_HOST}/{release}/{arch}/{subarch}/{latest_build}/{archive} -O {out_path}")
 			if retval:
 				raise RuntimeError("wget command failed.")
 		os.chown(out_path, owner, group)
 		os.chmod(out_path, mode)
 
 		if not os.path.exists("/root/ego"):
-			retval = os.system("git clone https://code.funtoo.org/bitbucket/scm/core/ego.git /root/ego")
+			retval = os.system(f"git clone {EGO_GIT_URL} /root/ego")
 			if retval:
 				raise RuntimeError("Git clone of ego failed.")
 
