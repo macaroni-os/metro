@@ -367,14 +367,26 @@ def main():
 				raise RuntimeError(
 					f"Unable to write to {mirror_path}. Please run as root (preferred) or change permissions on this directory.")
 		selector = LiveBuildSelector()
-		while True:
-			release, arch, subarch = curses.wrapper(curses_main, selector)
+
+		# Check if the release, architecture and sub-architecture from env
+		release = os.environ.get('METRO_BUILD_RELEASE', None)
+		arch = os.environ.get('METRO_BUILD_ARCH', None)
+		subarch = os.environ.get('METRO_BUILD_SUBARCH', None)
+
+		if release is not None and arch is not None and subarch is not None:
 			latest_build = selector.latest_build(release, arch, subarch)
 			if latest_build is None:
-				print("The subarch you selected appears to be empty. Please press any key and pick another.")
-				sys.stdin.read(1)
-			else:
-				break
+				raise RuntimeError(
+					f"The subarch {subarch} you selected from env appears to be empty. Exiting.")
+		else:
+			while True:
+				release, arch, subarch = curses.wrapper(curses_main, selector)
+				latest_build = selector.latest_build(release, arch, subarch)
+				if latest_build is None:
+					print("The subarch you selected appears to be empty. Please press any key and pick another.")
+					sys.stdin.read(1)
+				else:
+					break
 		arch_path = mirror_path.joinpath(release)
 
 		makedirs(arch_path.joinpath("snapshots"), mirror_path, owner=owner, group=group, dirmode=dirmode)
